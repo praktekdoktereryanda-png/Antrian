@@ -68,7 +68,7 @@
 
     <script>
         const firebaseConfig = {
-            apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
+            apiKey: "YOUR_API_KEY",
             authDomain: "antrian-klinik-cf6cb.firebaseapp.com",
             databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "antrian-klinik-cf6cb"
@@ -77,13 +77,14 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        const videoFiles = ["video1.mp4", "video2.mp4"]; 
-        const posterFiles = ["Poster1.jpg", "Poster2.jpg", "Poster3.jpg"]; 
+        const videoFiles = ["video1.mp4", "video2.mp4"];
+        const posterFiles = ["Poster1.jpg", "Poster2.jpg", "Poster3.jpg"];
 
         let currentVideoIdx = 0;
         let currentPosterIdx = 0;
         let suaraAktif = false;
         let lastCall = "";
+        let posterInterval;
 
         const vPlayer = document.getElementById('vPlayer');
 
@@ -95,11 +96,16 @@
                 img.className = `poster-img ${index === 0 ? 'active' : ''}`;
                 container.appendChild(img);
             });
+
             setInterval(updateClock, 1000);
         }
 
         function updateClock() {
-            document.getElementById('clock').innerText = new Date().toLocaleTimeString('id-ID');
+            const now = new Date();
+            const jam = String(now.getHours()).padStart(2, '0');
+            const menit = String(now.getMinutes()).padStart(2, '0');
+            const detik = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('clock').innerText = `${jam}:${menit}:${detik}`;
         }
 
         function startMedia() {
@@ -110,28 +116,54 @@
         }
 
         function startPosterCycle() {
+            if (posterInterval) return;
+
             const posters = document.querySelectorAll('.poster-img');
-            setInterval(() => {
+
+            posterInterval = setInterval(() => {
                 posters[currentPosterIdx].classList.remove('active');
                 currentPosterIdx = (currentPosterIdx + 1) % posters.length;
                 posters[currentPosterIdx].classList.add('active');
             }, 10000);
         }
 
-        // --- FITUR MENGULANG VIDEO TERUS MENERUS ---
+        // 🔥 LOOP VIDEO TERUS MENERUS
         vPlayer.onended = () => {
-            // Pindah ke video berikutnya, jika sudah habis balik ke index 0 (video pertama)
-            currentVideoIdx = (currentVideoIdx + 1) % videoFiles.length;
-            
-            // Tambahkan parameter unik agar browser TV tidak mengambil dari cache yang macet
-            vPlayer.src = videoFiles[currentVideoIdx] + "?t=" + new Date().getTime();
-            
+            currentVideoIdx++;
+
+            if (currentVideoIdx >= videoFiles.length) {
+                currentVideoIdx = 0;
+            }
+
+            vPlayer.src = videoFiles[currentVideoIdx];
             vPlayer.load();
-            vPlayer.play().catch(e => console.log("Menunggu interaksi..."));
+            vPlayer.play();
         };
 
-        // Firebase Listener
+        // 🔥 HANDLE ERROR VIDEO
+        vPlayer.onerror = () => {
+            console.log("Video error, skip");
+
+            currentVideoIdx++;
+            if (currentVideoIdx >= videoFiles.length) {
+                currentVideoIdx = 0;
+            }
+
+            vPlayer.src = videoFiles[currentVideoIdx];
+            vPlayer.load();
+            vPlayer.play();
+        };
+
+        // 🔥 JAGA AGAR TIDAK PAUSE
+        vPlayer.onpause = () => {
+            if (suaraAktif && !speechSynthesis.speaking) {
+                vPlayer.play();
+            }
+        };
+
+        // 🔥 LISTENER FIREBASE
         db.ref('panggilan_terbaru').on('value', (snapshot) => {
+
             const data = snapshot.val();
             if (!data || data.nomor === 0) return;
 
@@ -141,21 +173,32 @@
 
             const jam = new Date().getHours();
             const kode = (data.tipe === 'Umum') ? (jam < 12 ? "P" : "S") : "N";
-            const targetId = data.tipe === 'Sunat' ? 'display-sunat' : 'display-umum';
+
+            const targetId = data.tipe === 'Sunat'
+                ? 'display-sunat'
+                : 'display-umum';
+
             const el = document.getElementById(targetId);
-            
-            if (el) {
-                el.innerText = `${kode}-${data.nomor.toString().padStart(2, '0')}`;
-                el.classList.remove('blink');
-                void el.offsetWidth;
-                el.classList.add('blink');
-            }
+            if (!el) return;
+
+            el.innerText = `${kode}-${data.nomor.toString().padStart(2, '0')}`;
+
+            el.classList.remove('blink');
+            void el.offsetWidth;
+            el.classList.add('blink');
 
             if (suaraAktif) {
                 vPlayer.pause();
-                const pesan = new SpeechSynthesisUtterance(`Nomor antrian ${kode} ${data.nomor}, silakan menuju ruang ${data.tipe}`);
+
+                const nomor = data.nomor.toString().padStart(2, '0').split('').join(' ');
+
+                const pesan = new SpeechSynthesisUtterance(
+                    `Nomor antrian ${kode} ${nomor}, silakan menuju ruang ${data.tipe}`
+                );
+
                 pesan.lang = 'id-ID';
                 pesan.onend = () => vPlayer.play();
+
                 speechSynthesis.cancel();
                 speechSynthesis.speak(pesan);
             }
@@ -163,5 +206,6 @@
 
         init();
     </script>
+
 </body>
 </html>
