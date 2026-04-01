@@ -5,11 +5,38 @@
 <title>Admin Antrian Klinik</title>
 
 <style>
-body { font-family: sans-serif; text-align: center; background: #f4f7f6; }
-.container { display: flex; justify-content: center; gap: 20px; margin-top: 30px; }
-.box { background: white; padding: 20px; border-radius: 15px; width: 40%; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
-.nomor { font-size: 60px; margin: 10px 0; font-weight: bold; }
-button { font-size: 18px; padding: 10px 20px; margin: 5px; border: none; border-radius: 10px; cursor: pointer; }
+body {
+    font-family: sans-serif;
+    text-align: center;
+    background: #f4f7f6;
+}
+h1 { margin-top: 20px; }
+.container {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 30px;
+}
+.box {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    width: 40%;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+.nomor {
+    font-size: 60px;
+    margin: 10px 0;
+    font-weight: bold;
+}
+button {
+    font-size: 18px;
+    padding: 10px 20px;
+    margin: 5px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+}
 .next { background: #27ae60; color: white; }
 .ulang { background: #f39c12; color: white; }
 .reset { background: #e74c3c; color: white; }
@@ -21,6 +48,7 @@ button { font-size: 18px; padding: 10px 20px; margin: 5px; border: none; border-
 <h1>Panel Admin Antrian</h1>
 
 <div class="container">
+
     <div class="box">
         <h2>Sunat</h2>
         <div class="nomor" id="sunat">0</div>
@@ -34,12 +62,12 @@ button { font-size: 18px; padding: 10px 20px; margin: 5px; border: none; border-
         <button class="next" onclick="next('Umum')">NEXT</button>
         <button class="ulang" onclick="ulang('Umum')">ULANGI</button>
     </div>
+
 </div>
 
 <br>
 <button class="reset" onclick="resetAll()">RESET SEMUA</button>
 
-<!-- FIREBASE -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -48,13 +76,13 @@ const firebaseConfig = {
   apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
   authDomain: "antrian-klinik-cf6cb.firebaseapp.com",
   databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "antrian-klinik-cf6cb",
+  projectId: "antrian-klinik-cf6cb"
 };
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// tampilkan data
+// tampil angka
 db.ref('antrian').on('value', snap => {
     const data = snap.val() || {};
     document.getElementById('sunat').innerText = data.Sunat || 0;
@@ -65,12 +93,11 @@ db.ref('antrian').on('value', snap => {
 function next(tipe) {
     const ref = db.ref('antrian/' + tipe);
 
-    ref.transaction(current => {
-        return (current || 0) + 1;
-    }, (error, committed, snapshot) => {
+    ref.transaction(current => (current || 0) + 1,
+    (err, committed, snap) => {
 
         if (committed) {
-            const nomor = snapshot.val();
+            const nomor = snap.val();
 
             db.ref('panggilan_terbaru').set({
                 tipe: tipe,
@@ -94,7 +121,7 @@ function ulang(tipe) {
 
 // RESET
 function resetAll() {
-    if (!confirm("Reset semua?")) return;
+    if (!confirm("Reset semua antrian?")) return;
 
     db.ref('antrian').set({
         Sunat: 0,
