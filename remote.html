@@ -1,90 +1,89 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Remote HP Antrian</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote Antrian</title>
     <style>
-        body { 
-            font-family: sans-serif; background: #2c3e50; margin: 0; padding: 20px; 
-            display: flex; flex-direction: column; height: 100vh; justify-content: center; box-sizing: border-box; 
-        }
-        
-        .card { background: #34495e; padding: 15px; border-radius: 20px; text-align: center; margin-bottom: 15px; flex: 1; display: flex; flex-direction: column; justify-content: center; }
-        h3 { color: #bdc3c7; margin: 0 0 15px 0; font-size: 18px; letter-spacing: 1px; }
-
-        button { 
-            width: 100%; height: 100px; font-size: 24px; font-weight: bold; border-radius: 15px; border: none; 
-            cursor: pointer; transition: 0.1s; color: white; box-shadow: 0 6px 0 rgba(0,0,0,0.3);
-        }
-
-        .btn-umum { background: #3498db; }
-        .btn-umum:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,0.3); background: #2980b9; }
-
-        .btn-sunat { background: #e67e22; }
-        .btn-sunat:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,0.3); background: #d35400; }
-
-        .status { font-size: 16px; color: #f1c40f; margin-top: 15px; font-weight: bold; }
-        #koneksi { position: fixed; top: 0; left: 0; width: 100%; text-align: center; padding: 5px; font-size: 11px; color: #7f8c8d; }
+        body { font-family: sans-serif; background: #2c3e50; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .card { background: #34495e; padding: 20px; border-radius: 15px; color: white; text-align: center; }
+        button { width: 100%; height: 80px; font-size: 20px; font-weight: bold; border-radius: 10px; border: none; cursor: pointer; transition: 0.2s; }
+        .btn-call { background: #2ecc71; color: white; margin-bottom: 10px; }
+        .btn-call:active { background: #27ae60; transform: scale(0.95); }
+        .status { font-size: 14px; color: #bdc3c7; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div id="koneksi">Menghubungkan ke Firebase...</div>
-
     <div class="card">
         <h3>ANTRIAN UMUM</h3>
-        <button class="btn-umum" onclick="panggil('Umum')">PANGGIL UMUM</button>
-        <div id="stat-umum" class="status">Nomor terakhir: 0</div>
+        <button class="btn-call" onclick="panggil('Umum')">PANGGIL UMUM</button>
+        <div id="stat-umum" class="status">Memuat data...</div>
     </div>
 
     <div class="card">
         <h3>ANTRIAN SUNAT</h3>
-        <button class="btn-sunat" onclick="panggil('Sunat')">PANGGIL SUNAT</button>
-        <div id="stat-sunat" class="status">Nomor terakhir: 0</div>
+        <button class="btn-call" onclick="panggil('Sunat')">PANGGIL SUNAT</button>
+        <div id="stat-sunat" class="status">Memuat data...</div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <script>
-        // CONFIG ASLI SESUAI DATABASE ANDA
+        // CONFIG FIREBASE
         const firebaseConfig = {
-            apiKey: "AIzaSyAUGh816sqOpUlCBvTpHaPlrSV_Gi4kHiU",
-            authDomain: "antrianklinik-784b0.firebaseapp.com",
-            databaseURL: "https://antrianklinik-784b0-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "antrianklinik-784b0"
+            apiKey: "ISI_API_KEY_ANDA",
+            authDomain: "PROJECT_ANDA.firebaseapp.com",
+            databaseURL: "https://PROJECT_ANDA-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "PROJECT_ANDA",
+            storageBucket: "PROJECT_ANDA.appspot.com",
+            messagingSenderId: "12345",
+            appId: "1:12345:web:abc"
         };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        // Variabel lokal untuk menyimpan nomor terbaru
         let nUmum = 0;
         let nSunat = 0;
 
-        // Ambil nomor terakhir dari database agar tidak reset ke 0 saat HP direfresh
-        db.ref('panggilan_terbaru').on('value', (snapshot) => {
+        // 1. FUNGSI SYNC: Mengambil data terakhir dari Firebase agar nomor tidak reset saat refresh
+        db.ref('nomor_terakhir').on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                if (data.tipe === 'Umum') {
-                    nUmum = data.nomor;
-                    document.getElementById('stat-umum').innerText = "Nomor terakhir: " + nUmum;
-                } else if (data.tipe === 'Sunat') {
-                    nSunat = data.nomor;
-                    document.getElementById('stat-sunat').innerText = "Nomor terakhir: " + nSunat;
-                }
-                document.getElementById('koneksi').innerText = "Status: Online ✅";
+                nUmum = data.Umum || 0;
+                nSunat = data.Sunat || 0;
+                document.getElementById('stat-umum').innerText = "Nomor terakhir: " + nUmum;
+                document.getElementById('stat-sunat').innerText = "Nomor terakhir: " + nSunat;
+            } else {
+                document.getElementById('stat-umum').innerText = "Nomor terakhir: 0";
+                document.getElementById('stat-sunat').innerText = "Nomor terakhir: 0";
             }
         });
 
+        // 2. FUNGSI PANGGIL
         function panggil(tipe) {
-            let nomor = (tipe === 'Umum') ? ++nUmum : ++nSunat;
+            let nomorTerpilih = 0;
 
-            // KIRIM DATA (Gunakan 'panggilan_terbaru' agar singkron dengan index.html)
-            db.ref('panggilan_terbaru').set({
+            if (tipe === 'Umum') {
+                nUmum++;
+                nomorTerpilih = nUmum;
+            } else {
+                nSunat++;
+                nomorTerpilih = nSunat;
+            }
+
+            // Update database untuk mentrigger suara di laptop/display
+            db.ref('panggilan_klinik').set({
                 tipe: tipe,
-                nomor: nomor,
-                waktu: Date.now()
+                nomor: nomorTerpilih,
+                trigger: Date.now()
+            });
+
+            // Simpan status nomor terakhir agar sinkron di semua HP remote
+            db.ref('nomor_terakhir').update({
+                [tipe]: nomorTerpilih
             });
         }
     </script>
