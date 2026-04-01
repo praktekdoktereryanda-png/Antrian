@@ -1,23 +1,65 @@
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Layar Antrian Klinik</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #1e272e; color: white; text-align: center; margin: 0; padding-top: 50px; }
+        .container { background: #ffffff; color: #2c3e50; display: inline-block; padding: 50px; border-radius: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); border-top: 15px solid #3498db; }
+        #nomor { font-size: 180px; font-weight: bold; margin: 10px 0; color: #2c3e50; }
+        .label { font-size: 30px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 2px; }
+        .footer { margin-top: 40px; color: #808e9b; font-size: 14px; }
+    </style>
+</head>
+<body onclick="aktifkanSuara()">
+    <h1>SISTEM ANTRIAN KLINIK</h1>
+    <div class="container">
+        <div class="label" id="label-tipe">ANTRIAN</div>
+        <div id="nomor">00</div>
+    </div>
+    <div class="footer" id="status-suara">Klik di mana saja agar suara aktif 🔈</div>
 
-<script>
-  // Konfigurasi ini sudah saya ambil dari foto Anda
-  const firebaseConfig = {
-    apiKey: "AIzaSyAUGh816sqOpUlCBvTpHaPlrSV_Gi4kHiU",
-    authDomain: "antrianklinik-784b0.firebaseapp.com",
-    databaseURL: "https://antrianklinik-784b0-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "antrianklinik-784b0",
-    storageBucket: "antrianklinik-784b0.firebasestorage.app",
-    messagingSenderId: "432563775264",
-    appId: "1:432563775264:web:e584f7c35e93a666c91945"
-  };
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-  // Cara inisialisasi yang benar untuk browser
-  if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-  }
-  const db = firebase.database();
-  
-  // Lanjutkan dengan kode logika panggil/terima data Anda...
-</script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAUGh816sqOpUlCBvTpHaPlrSV_Gi4kHiU",
+            authDomain: "antrianklinik-784b0.firebaseapp.com",
+            databaseURL: "https://antrianklinik-784b0-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "antrianklinik-784b0",
+            storageBucket: "antrianklinik-784b0.firebasestorage.app",
+            messagingSenderId: "432563775264",
+            appId: "1:432563775264:web:e584f7c35e93a666c91945"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.database();
+
+        let suaraAktif = false;
+        function aktifkanSuara() { 
+            suaraAktif = true; 
+            document.getElementById('status-suara').innerText = "🔊 Suara Panggil Siap";
+        }
+
+        db.ref('panggilan_terbaru').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                let nomorTampil = data.nomor;
+                let awalan = (data.tipe === 'Umum') ? (nomorTampil > 50 ? "S-" : "P-") : "N-";
+
+                document.getElementById('nomor').innerText = awalan + nomorTampil;
+                document.getElementById('label-tipe').innerText = "ANTRIAN " + data.tipe;
+
+                if (suaraAktif) {
+                    const pesan = new SpeechSynthesisUtterance(`Nomor antrian ${data.tipe}, ${nomorTampil}, silakan masuk`);
+                    pesan.lang = 'id-ID';
+                    window.speechSynthesis.speak(pesan);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
