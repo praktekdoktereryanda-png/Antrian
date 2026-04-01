@@ -2,14 +2,18 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>Admin Antrian PRO</title>
+<title>Admin Antrian Klinik</title>
+
 <style>
 body {
     font-family: sans-serif;
     text-align: center;
     background: #f4f7f6;
 }
-h1 { margin-top: 20px; }
+
+h1 {
+    margin-top: 20px;
+}
 
 .container {
     display: flex;
@@ -29,10 +33,11 @@ h1 { margin-top: 20px; }
 .nomor {
     font-size: 60px;
     margin: 10px 0;
+    font-weight: bold;
 }
 
 button {
-    font-size: 20px;
+    font-size: 18px;
     padding: 10px 20px;
     margin: 5px;
     border: none;
@@ -40,46 +45,82 @@ button {
     cursor: pointer;
 }
 
-.next { background: #27ae60; color: white; }
-.ulang { background: #f39c12; color: white; }
+.next {
+    background: #27ae60;
+    color: white;
+}
+
+.ulang {
+    background: #f39c12;
+    color: white;
+}
+
+.reset {
+    background: #e74c3c;
+    color: white;
+}
 </style>
+
 </head>
+
 <body>
+
+<script>
+// 🔐 PASSWORD SEDERHANA
+const password = prompt("Masukkan password:");
+if (password !== "12345") {
+    document.body.innerHTML = "<h2>Akses ditolak</h2>";
+}
+</script>
 
 <h1>Panel Admin Antrian</h1>
 
 <div class="container">
 
-<div class="box">
-    <h2>Sunat</h2>
-    <div class="nomor" id="sunat">0</div>
-    <button class="next" onclick="next('Sunat')">NEXT</button>
-    <button class="ulang" onclick="ulang('Sunat')">ULANGI</button>
+    <div class="box">
+        <h2>Sunat</h2>
+        <div class="nomor" id="sunat">0</div>
+        <button class="next" onclick="next('Sunat')">NEXT</button>
+        <button class="ulang" onclick="ulang('Sunat')">ULANGI</button>
+    </div>
+
+    <div class="box">
+        <h2>Umum</h2>
+        <div class="nomor" id="umum">0</div>
+        <button class="next" onclick="next('Umum')">NEXT</button>
+        <button class="ulang" onclick="ulang('Umum')">ULANGI</button>
+    </div>
+
 </div>
 
-<div class="box">
-    <h2>Umum</h2>
-    <div class="nomor" id="umum">0</div>
-    <button class="next" onclick="next('Umum')">NEXT</button>
-    <button class="ulang" onclick="ulang('Umum')">ULANGI</button>
-</div>
+<br>
 
-</div>
+<button class="reset" onclick="resetAll()">RESET SEMUA</button>
 
+<!-- FIREBASE -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
+
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-    apiKey: "APIKEY_KAMU",
-    authDomain: "PROJECT.firebaseapp.com",
-    databaseURL: "https://PROJECT.firebaseio.com",
+  apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
+  authDomain: "antrian-klinik-cf6cb.firebaseapp.com",
+  databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "antrian-klinik-cf6cb",
+  storageBucket: "antrian-klinik-cf6cb.firebasestorage.app",
+  messagingSenderId: "737102197117",
+  appId: "1:737102197117:web:cc4752ea0c879741e35c14",
+  measurementId: "G-K11JPNJPBR"
 };
+
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// Ambil data realtime
-db.ref('panggilan_terbaru').on('value', snap => {
+
+// 🔄 AMBIL DATA REALTIME
+db.ref('antrian').on('value', snap => {
     const data = snap.val();
     if (!data) return;
 
@@ -87,29 +128,67 @@ db.ref('panggilan_terbaru').on('value', snap => {
     document.getElementById('umum').innerText = data.Umum || 0;
 });
 
-// NEXT
-function next(tipe) {
-    db.ref('antrian/' + tipe).transaction(current => {
-        return (current || 0) + 1;
-    });
 
-    db.ref('antrian/' + tipe).once('value', snap => {
-        db.ref('panggilan_terbaru').set({
-            tipe: tipe,
-            nomor: snap.val()
-        });
+// ▶️ NEXT (TAMBAH NOMOR)
+function next(tipe) {
+
+    const ref = db.ref('antrian/' + tipe);
+
+    ref.transaction(current => {
+        return (current || 0) + 1;
+    }, (error, committed, snapshot) => {
+
+        if (error) {
+            alert("❌ Error koneksi");
+            console.error(error);
+        }
+
+        if (committed) {
+            const nomor = snapshot.val();
+
+            // kirim ke layar TV
+            db.ref('panggilan_terbaru').set({
+                tipe: tipe,
+                nomor: nomor
+            });
+
+            console.log("NEXT:", tipe, nomor);
+        }
     });
 }
 
-// ULANGI
+
+// 🔁 ULANGI
 function ulang(tipe) {
     db.ref('antrian/' + tipe).once('value', snap => {
+        const nomor = snap.val();
+
         db.ref('panggilan_terbaru').set({
             tipe: tipe,
-            nomor: snap.val()
+            nomor: nomor
         });
     });
 }
+
+
+// 🔄 RESET SEMUA
+function resetAll() {
+
+    if (!confirm("Yakin reset semua antrian?")) return;
+
+    db.ref('antrian').set({
+        Sunat: 0,
+        Umum: 0
+    });
+
+    db.ref('panggilan_terbaru').set({
+        tipe: "",
+        nomor: 0
+    });
+
+    alert("✅ Antrian direset");
+}
+
 </script>
 
 </body>
