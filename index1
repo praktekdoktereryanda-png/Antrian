@@ -5,25 +5,18 @@
     <title>Sistem Antrian Klinik - Rumah Sunat Dokter Yanda</title>
     <style>
         body { margin: 0; padding: 0; background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; width: 100vw; overflow: hidden; }
-        
         .sidebar-left { width: 30%; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 20px; background: #fff; border-right: 2px solid #ddd; }
         .card { background: #fff; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #eee; }
         .card h2 { margin: 0; font-size: 2vw; color: #34495e; border-bottom: 5px solid #f1c40f; display: inline-block; text-transform: uppercase; }
         .num { font-size: 8.5vw; font-weight: bold; margin: 5px 0; color: #2c3e50; }
-        
         .blink { animation: blinker 1s linear 3; }
         @keyframes blinker { 50% { opacity: 0; } }
-
         .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; position: relative; }
         video { height: 100%; width: 100%; object-fit: cover; background: #000; }
-
         .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; border-left: 2px solid #ddd; }
         .poster-container { width: 95%; aspect-ratio: 4 / 5; position: relative; overflow: hidden; border-radius: 15px; background: #000; box-shadow: 0 15px 35px rgba(0,0,0,0.2); margin-bottom: 10px; }
-        
-        /* Perbaikan: Poster harus dipastikan muncul di atas background hitam */
         .poster-img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; opacity: 0; transition: opacity 1.5s ease-in-out; z-index: 1; }
         .poster-img.active { opacity: 1; z-index: 2; }
-
         #clock { font-size: 3.5vw; font-weight: bold; color: #2c3e50; margin-top: auto; }
         .jadwal-box { background: #f9f9f9; border: 2px solid #e0e0e0; border-radius: 10px; padding: 10px; width: 90%; text-align: center; margin-top: 5px; }
         .jadwal-title { font-weight: bold; color: #e67e22; border-bottom: 1px solid #ddd; margin-bottom: 5px; font-size: 1.1vw; }
@@ -33,7 +26,7 @@
     </style>
 </head>
 
-<body tabindex="0" onclick="startMedia()" onkeydown="handleRemote(event)">
+<body tabindex="0" onclick="startMedia()" onkeydown="startMedia()">
 
     <div class="sidebar-left">
         <div class="card">
@@ -41,7 +34,7 @@
             <div class="num" id="display-sunat">N-00</div>
         </div>
         <div class="card" style="border-top: 10px solid #3498db;">
-            <h2 id="label-umum">PRAKTEK UMUM</h2>
+            <h2>PRAKTEK UMUM</h2>
             <div class="num" id="display-umum" style="color: #3498db;">P-00</div>
         </div>
     </div>
@@ -78,6 +71,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        // Daftar file video (Pastikan nama file di flashdisk/server sama persis)
         const videoFiles = ["video1.mp4", "video2.mp4"]; 
         const posterFiles = ["Poster1.jpg", "Poster2.jpg", "Poster3.jpg"]; 
 
@@ -89,9 +83,8 @@
         const vPlayer = document.getElementById('vPlayer');
 
         function init() {
-            // Render Posters
+            // Tampilkan Poster Pertama Kali
             const container = document.getElementById('posterList');
-            container.innerHTML = ''; // Pastikan bersih dulu
             posterFiles.forEach((file, index) => {
                 const img = document.createElement('img');
                 img.src = file;
@@ -101,84 +94,23 @@
 
             updateClock();
             setInterval(updateClock, 1000);
-            
-            // Fokus ke body agar remote langsung terbaca
-            document.body.focus();
-            
-            // Jalankan siklus poster langsung tanpa tunggu interaksi
             startPosterCycle();
+            
+            // Coba putar video pertama (status muted agar diizinkan TV)
+            vPlayer.play().catch(() => console.log("Menunggu interaksi remote..."));
         }
 
         function updateClock() {
             document.getElementById('clock').innerText = new Date().toLocaleTimeString('id-ID');
         }
 
-        // Fungsi khusus remote TV (D-Pad / Enter / Center button)
-        function handleRemote(event) {
-            console.log("Tombol ditekan:", event.keyCode);
-            // Kode tombol OK/Center biasanya 13, 167, atau 23
-            startMedia();
-        }
-
         function startMedia() {
             if (!suaraAktif) {
                 suaraAktif = true;
-                vPlayer.muted = false; // Aktifkan suara
-                vPlayer.play().catch(e => console.log("Gagal memutar video:", e));
+                vPlayer.muted = false; // Buka suara setelah tombol remote ditekan
+                vPlayer.play();
             }
         }
 
         function startPosterCycle() {
             const posters = document.querySelectorAll('.poster-img');
-            if (posters.length === 0) return;
-            
-            setInterval(() => {
-                posters[currentPosterIdx].classList.remove('active');
-                currentPosterIdx = (currentPosterIdx + 1) % posters.length;
-                posters[currentPosterIdx].classList.add('active');
-            }, 10000);
-        }
-
-        vPlayer.onended = () => {
-            currentVideoIdx = (currentVideoIdx + 1) % videoFiles.length;
-            vPlayer.src = videoFiles[currentVideoIdx];
-            vPlayer.play().catch(e => console.log("Gagal ganti video:", e));
-        };
-
-        // Firebase Listener
-        db.ref('panggilan_terbaru').on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (!data || data.nomor === 0) return;
-
-            const key = data.tipe + "-" + data.nomor;
-            if (key === lastCall) return;
-            lastCall = key;
-
-            const jam = new Date().getHours();
-            const kode = (data.tipe === 'Umum') ? (jam < 12 ? "P" : "S") : "N";
-            const targetId = data.tipe === 'Sunat' ? 'display-sunat' : 'display-umum';
-            const el = document.getElementById(targetId);
-            
-            if (el) {
-                el.innerText = `${kode}-${data.nomor.toString().padStart(2, '0')}`;
-                el.classList.remove('blink');
-                void el.offsetWidth;
-                el.classList.add('blink');
-            }
-
-            if (suaraAktif) {
-                vPlayer.pause();
-                const pesan = new SpeechSynthesisUtterance(`Nomor antrian ${kode} ${data.nomor}, silakan menuju ruang ${data.tipe}`);
-                pesan.lang = 'id-ID';
-                pesan.onend = () => vPlayer.play();
-                speechSynthesis.cancel();
-                speechSynthesis.speak(pesan);
-            }
-        });
-
-        // Pastikan init jalan setelah DOM siap
-        window.onload = init;
-    </script>
-
-</body>
-</html>
