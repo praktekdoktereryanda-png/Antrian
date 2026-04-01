@@ -2,117 +2,129 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Remote Antrian Klinik</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Remote Antrian HP</title>
     <style>
         body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background: #1e272e; 
+            font-family: sans-serif; 
+            background: #2c3e50; 
+            margin: 0; 
             padding: 20px; 
             display: flex; 
             flex-direction: column; 
-            gap: 20px; 
             height: 100vh; 
-            justify-content: center;
-            margin: 0;
+            justify-content: center; 
             box-sizing: border-box;
         }
         
-        .btn-container {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        button { 
-            width: 100%; 
-            height: 150px; 
-            font-size: 26px; 
-            font-weight: bold; 
-            border-radius: 25px; 
-            border: none; 
-            cursor: pointer; 
-            transition: 0.2s; 
+        /* Indikator Status di Atas */
+        #status-koneksi {
+            text-align: center;
             color: white;
-            box-shadow: 0 8px 0 rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .online { background: #27ae60; }
+        .offline { background: #e74c3c; }
+
+        /* Gaya Tombol Besar */
+        .btn {
+            width: 100%;
+            height: 40%; /* Mengisi layar HP */
+            margin-bottom: 20px;
+            border: none;
+            border-radius: 25px;
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 10px 0 rgba(0,0,0,0.2);
+            transition: 0.1s;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            text-transform: uppercase;
         }
 
-        /* Tombol Umum (Biru) */
-        .btn-umum { background: #3498db; }
-        .btn-umum:active { background: #2980b9; transform: translateY(4px); box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
+        .btn-umum { background: #3498db; } /* Biru */
+        .btn-umum:active { transform: translateY(6px); box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
 
-        /* Tombol Sunat (Orange) */
-        .btn-sunat { background: #e67e22; }
-        .btn-sunat:active { background: #d35400; transform: translateY(4px); box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
+        .btn-sunat { background: #e67e22; } /* Orange */
+        .btn-sunat:active { transform: translateY(6px); box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
 
-        .status { font-size: 16px; opacity: 0.9; font-weight: normal; background: rgba(0,0,0,0.2); padding: 5px 15px; border-radius: 10px; }
-        
-        #koneksi { 
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            padding: 10px; 
-            text-align: center; 
-            font-size: 12px; 
-            font-weight: bold; 
-            color: white; 
-            z-index: 100;
-        }
-        .online { background: #27ae60; }
-        .offline { background: #e74c3c; }
+        .last-num { font-size: 16px; font-weight: normal; margin-top: 10px; opacity: 0.9; }
     </style>
 </head>
 <body>
 
-    <div id="koneksi" class="offline">MENGHUBUNGKAN...</div>
+    <div id="status-koneksi" class="offline">MENGHUBUNGKAN...</div>
 
-    <div class="btn-container">
-        <button class="btn-umum" onclick="panggil('Umum')">
-            PANGGIL UMUM
-            <div id="stat-umum" class="status">Nomor: 0</div>
-        </button>
+    <button class="btn btn-umum" onclick="panggil('Umum')">
+        PANGGIL UMUM
+        <div class="last-num" id="info-umum">Terakhir: 0</div>
+    </button>
 
-        <button class="btn-sunat" onclick="panggil('Sunat')">
-            PANGGIL SUNAT
-            <div id="stat-sunat" class="status">Nomor: 0</div>
-        </button>
-    </div>
+    <button class="btn btn-sunat" onclick="panggil('Sunat')">
+        PANGGIL SUNAT
+        <div class="last-num" id="info-sunat">Terakhir: 0</div>
+    </button>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // Konfigurasi Firebase Anda
         const firebaseConfig = {
             apiKey: "AIzaSyAUGh816sqOpUlCBvTpHaPlrSV_Gi4kHiU",
             authDomain: "antrianklinik-784b0.firebaseapp.com",
             databaseURL: "https://antrianklinik-784b0-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "antrianklinik-784b0",
-            storageBucket: "antrianklinik-784b0.firebasestorage.app",
-            messagingSenderId: "432563775264",
-            appId: "1:432563775264:web:e584f7c35e93a666c91945"
+            projectId: "antrianklinik-784b0"
         };
 
-        // Inisialisasi Firebase
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.database();
 
         let nUmum = 0;
         let nSunat = 0;
 
-        // Monitor Status Koneksi
+        // Monitor Koneksi
         db.ref(".info/connected").on("value", (snap) => {
-            const label = document.getElementById('koneksi');
-            if (snap.val() === true) {
-                label.innerText = "SISTEM TERHUBUNG ✅";
-                label.className = "online";
+            const el = document.getElementById('status-koneksi');
+            if (snap.val()) {
+                el.innerText = "SISTEM ONLINE ✅";
+                el.className = "online";
             } else {
+                el.innerText = "SISTEM OFFLINE ❌";
+                el.className = "offline";
+            }
+        });
+
+        // Sinkronisasi Nomor Terakhir dari Firebase
+        db.ref('panggilan_terbaru').on('value', (s) => {
+            const data = s.val();
+            if(data) {
+                if(data.tipe === 'Umum') {
+                    nUmum = data.nomor;
+                    document.getElementById('info-umum').innerText = "Terakhir: " + nUmum;
+                } else if(data.tipe === 'Sunat') {
+                    nSunat = data.nomor;
+                    document.getElementById('info-sunat').innerText = "Terakhir: " + nSunat;
+                }
+            }
+        });
+
+        function panggil(tipe) {
+            let nomor = (tipe === 'Umum') ? ++nUmum : ++nSunat;
+            
+            // Kirim data ke Firebase agar TV merespon
+            db.ref('panggilan_terbaru').set({
+                tipe: tipe,
+                nomor: nomor,
+                waktu: Date.now()
+            });
+        }
+    </script>
+</body>
+</html>
