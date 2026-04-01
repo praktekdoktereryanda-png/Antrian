@@ -14,7 +14,7 @@
         .blink { animation: blinker 1s linear 3; }
         @keyframes blinker { 50% { opacity: 0; } }
 
-        .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; }
+        .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; position: relative; }
         video { height: 100%; width: 100%; object-fit: cover; }
 
         .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; border-left: 2px solid #ddd; }
@@ -29,6 +29,17 @@
         .jadwal-item { font-size: 1vw; color: #555; margin: 2px 0; }
         .hari-tutup { color: #e74c3c; font-weight: bold; }
         .footer-name { font-weight: bold; color: #16a085; font-size: 1.2vw; margin: 10px 0; }
+
+        /* TAMBAHAN CONTROL (TIDAK UBAH UI) */
+        #videoControl {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
     </style>
 </head>
 
@@ -50,8 +61,8 @@
             <source src="video1.mp4" type="video/mp4">
         </video>
 
-        <!-- ✅ TAMBAHAN KONTROL VIDEO (TIDAK UBAH UI) -->
-        <div style="position:absolute;bottom:20px;left:50%;transform:translateX(-50%);z-index:10;">
+        <!-- ✅ CONTROL DINAMIS -->
+        <div id="videoControl">
             <button onclick="togglePlay()" id="btnPlay">⏸</button>
             <button onclick="toggleMute()" id="btnMute">🔊</button>
         </div>
@@ -155,9 +166,30 @@
             }
         };
 
-        // ✅ TAMBAHAN FITUR KONTROL
+        /* ===== KONTROL VIDEO DINAMIS ===== */
+        let hideControlTimer;
+
+        function showControls() {
+            const control = document.getElementById("videoControl");
+            control.style.opacity = "1";
+
+            clearTimeout(hideControlTimer);
+            hideControlTimer = setTimeout(() => {
+                control.style.opacity = "0";
+            }, 3000);
+        }
+
+        const videoArea = document.querySelector(".center-video");
+        videoArea.addEventListener("mousemove", showControls);
+        videoArea.addEventListener("touchstart", showControls);
+
+        vPlayer.addEventListener("click", () => {
+            togglePlay();
+        });
+
         function togglePlay() {
             const btn = document.getElementById("btnPlay");
+
             if (vPlayer.paused) {
                 vPlayer.play();
                 btn.innerText = "⏸";
@@ -169,6 +201,7 @@
 
         function toggleMute() {
             const btn = document.getElementById("btnMute");
+
             vPlayer.muted = !vPlayer.muted;
             btn.innerText = vPlayer.muted ? "🔇" : "🔊";
         }
@@ -178,6 +211,7 @@
             if (btn) btn.innerText = "⏸";
         };
 
+        /* ===== FIREBASE ===== */
         db.ref('panggilan_terbaru').on('value', (snapshot) => {
             const data = snapshot.val();
             if (!data || data.nomor === 0) return;
