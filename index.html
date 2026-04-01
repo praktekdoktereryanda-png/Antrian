@@ -1,88 +1,31 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
     <meta charset="UTF-8">
-    <title>Layar Antrian Klinik - AntrianKlinik</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; text-align: center; }
-        .header { background: #2c3e50; color: white; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
-        .container { display: flex; justify-content: space-around; padding: 30px; gap: 20px; }
-        .box { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 45%; border-top: 10px solid #3498db; }
-        .box-sunat { border-top: 10px solid #e67e22; }
-        h2 { color: #7f8c8d; margin: 0; font-size: 24px; }
-        .nomor { font-size: 120px; font-weight: bold; color: #2c3e50; margin: 20px 0; }
-        video { width: 80%; max-width: 800px; border-radius: 15px; margin-top: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
-        .footer { margin-top: 20px; color: #95a5a6; font-size: 14px; }
-    </style>
+    <title>Antrian Klinik</title>
 </head>
-<body onclick="aktifkanSuara()"> <div class="header">
-        <h1>SISTEM ANTRIAN KLINIK</h1>
-    </div>
-    
-    <div class="container">
-        <div class="box">
-            <h2>UMUM (P/S)</h2>
-            <div id="nomor-umum" class="nomor">P-00</div>
-        </div>
-        <div class="box box-sunat">
-            <h2>KHUSUS SUNAT (N)</h2>
-            <div id="nomor-sunat" class="nomor">N-00</div>
-        </div>
-    </div>
-
-    <video autoplay loop muted>
-        <source src="video.mp4" type="video/mp4">
-    </video>
-
-    <div class="footer">Klik di mana saja pada layar ini untuk mengaktifkan suara panggil.</div>
-
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
+<body onclick="window.speechSynthesis.speak(new SpeechSynthesisUtterance('Suara aktif'))">
+    <h1 id="tampilan">P-00</h1>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script>
         const firebaseConfig = {
-            apiKey: "AIzaSyD7...", // Silakan lengkapi apiKey Anda jika diperlukan
+            apiKey: "MASUKKAN_API_KEY_ANDA_DI_SINI",
             databaseURL: "https://antrianklinik-784b0-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "antrianklinik-784b0"
         };
-        
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        let suaraAktif = false;
-        function aktifkanSuara() { 
-            suaraAktif = true; 
-            document.querySelector('.footer').innerText = "🔊 Suara Aktif";
-        }
-
-        // Mendengarkan perubahan data dari HP
-        db.ref('panggilan_klinik').on('value', (snapshot) => {
+        db.ref('panggilan').on('value', (snapshot) => {
             const data = snapshot.val();
-            if (data && data.trigger) {
-                updateTampilan(data.tipe, data.nomor);
-                panggilSuara(data.tipe, data.nomor);
+            if (data) {
+                document.getElementById('tampilan').innerText = data.nomor;
+                let audio = new SpeechSynthesisUtterance("Nomor antrian " + data.nomor + " silahkan masuk");
+                audio.lang = 'id-ID';
+                window.speechSynthesis.speak(audio);
             }
         });
-
-        function updateTampilan(tipe, nomor) {
-            if (tipe === 'Sunat') {
-                document.getElementById('nomor-sunat').innerText = 'N-' + nomor;
-            } else {
-                // Logika P jika <= 50, S jika > 50
-                let awalan = (nomor > 50) ? 'S-' : 'P-';
-                document.getElementById('nomor-umum').innerText = awalan + nomor;
-            }
-        }
-
-        function panggilSuara(tipe, nomor) {
-            if (suaraAktif) {
-                let teks = `Nomor antrian ${tipe}, ${nomor}, silahkan menuju ruang periksa.`;
-                const utterance = new SpeechSynthesisUtterance(teks);
-                utterance.lang = 'id-ID';
-                utterance.rate = 0.9;
-                window.speechSynthesis.speak(utterance);
-            }
-        }
     </script>
 </body>
 </html>
