@@ -79,7 +79,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 // Ambil data realtime
-db.ref('antrian').on('value', snap => {
+db.ref('panggilan_terbaru').on('value', snap => {
     const data = snap.val();
     if (!data) return;
 
