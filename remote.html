@@ -1,81 +1,37 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Remote Final Antrian</title>
-    <style>
-        body { font-family: sans-serif; text-align: center; background: #1a1a1a; color: white; padding: 20px; }
-        .box { background: #333; padding: 20px; border-radius: 15px; border: 2px solid #444; }
-        .btn { width: 100%; padding: 30px; font-size: 20px; font-weight: bold; border-radius: 15px; border: none; margin: 10px 0; cursor: pointer; color: white; }
-        .btn-umum { background: #007bff; }
-        .btn-sunat { background: #fd7e14; }
-        #log { font-family: monospace; font-size: 12px; background: black; color: #0f0; padding: 10px; margin-top: 20px; text-align: left; height: 100px; overflow-y: scroll; border-radius: 5px; }
-    </style>
+    <title>Remote</title>
 </head>
-<body>
-
-    <div class="box">
-        <h2>REMOTE KLINIK</h2>
-        <button class="btn btn-umum" onclick="panggil('Umum')">PANGGIL UMUM</button>
-        <button class="btn btn-sunat" onclick="panggil('Sunat')">PANGGIL SUNAT</button>
-        <div id="log">Menunggu perintah...</div>
-    </div>
+<body style="text-align:center; background:#222; color:white; font-family:sans-serif;">
+    <h2>REMOTE ANTRIAN</h2>
+    <button onclick="kirim(1)" style="width:90%; height:100px; background:blue; color:white; font-size:20px; border-radius:10px;">PANGGIL UMUM</button>
+    <br><br>
+    <div id="status">Menunggu...</div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        function updateLog(msg) {
-            const log = document.getElementById('log');
-            log.innerHTML += "> " + msg + "<br>";
-            log.scrollTop = log.scrollHeight;
-        }
-
-        const firebaseConfig = {
+        const conf = {
             apiKey: "AIzaSyAUGh816sqOpUlCBvTpHaPlrSV_Gi4kHiU",
-            authDomain: "antrianklinik-784b0.firebaseapp.com",
             databaseURL: "https://antrianklinik-784b0-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "antrianklinik-784b0",
-            storageBucket: "antrianklinik-784b0.firebasestorage.app",
-            messagingSenderId: "432563775264",
-            appId: "1:432563775264:web:deae77713393f98ac91945"
+            projectId: "antrianklinik-784b0"
         };
-
-        try {
-            firebase.initializeApp(firebaseConfig);
-            var db = firebase.database();
-            updateLog("Firebase siap.");
-        } catch (e) {
-            updateLog("Error Init: " + e.message);
-        }
-
-        // Cek koneksi ke server
-        db.ref(".info/connected").on("value", (snap) => {
-            if (snap.val() === true) {
-                updateLog("Sinyal ke Firebase: OK ✅");
-            } else {
-                updateLog("Sinyal ke Firebase: TERPUTUS ❌");
-            }
-        });
+        firebase.initializeApp(conf);
+        const db = firebase.database();
 
         let n = 0;
-        function panggil(tipe) {
+        function kirim(x) {
             n++;
-            updateLog("Mencoba panggil " + tipe + " #" + n);
-            
-            db.ref('panggilan_klinik').set({
-                tipe: tipe,
+            // Nama 'antrian_sekarang' harus SAMA dengan di index.html
+            db.ref('antrian_sekarang').set({
                 nomor: n,
-                trigger: Date.now()
+                waktu: Date.now()
             })
-            .then(() => {
-                updateLog("BERHASIL: Data terkirim ke cloud! ✨");
-            })
-            .catch((error) => {
-                updateLog("GAGAL: " + error.message);
-                alert("Error: " + error.message);
-            });
+            .then(() => { document.getElementById('status').innerText = "Berhasil panggil #" + n; })
+            .catch((e) => { alert("Error: " + e.message); });
         }
     </script>
 </body>
