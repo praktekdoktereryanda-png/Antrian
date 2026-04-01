@@ -2,46 +2,48 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Layar Antrian Klinik</title>
+    <title>Layar Antrian Klinik - AntrianKlinik</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f0f2f5; text-align: center; }
-        .container { display: flex; justify-content: space-around; padding: 20px; }
-        .box { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 40%; }
-        h1 { color: #2c3e50; }
-        .nomor { font-size: 80px; font-weight: bold; color: #3498db; margin: 20px 0; }
-        video { width: 80%; border-radius: 10px; margin-top: 20px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; text-align: center; }
+        .header { background: #2c3e50; color: white; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .container { display: flex; justify-content: space-around; padding: 30px; gap: 20px; }
+        .box { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 45%; border-top: 10px solid #3498db; }
+        .box-sunat { border-top: 10px solid #e67e22; }
+        h2 { color: #7f8c8d; margin: 0; font-size: 24px; }
+        .nomor { font-size: 120px; font-weight: bold; color: #2c3e50; margin: 20px 0; }
+        video { width: 80%; max-width: 800px; border-radius: 15px; margin-top: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .footer { margin-top: 20px; color: #95a5a6; font-size: 14px; }
     </style>
 </head>
-<body onclick="aktifkanSuara()"> <h1>ANTRIAN KLINIK</h1>
+<body onclick="aktifkanSuara()"> <div class="header">
+        <h1>SISTEM ANTRIAN KLINIK</h1>
+    </div>
     
     <div class="container">
         <div class="box">
             <h2>UMUM (P/S)</h2>
             <div id="nomor-umum" class="nomor">P-00</div>
         </div>
-        <div class="box">
-            <h2>SUNAT (N)</h2>
+        <div class="box box-sunat">
+            <h2>KHUSUS SUNAT (N)</h2>
             <div id="nomor-sunat" class="nomor">N-00</div>
         </div>
     </div>
 
     <video autoplay loop muted>
-        <source src="video-anda.mp4" type="video/mp4">
+        <source src="video.mp4" type="video/mp4">
     </video>
+
+    <div class="footer">Klik di mana saja pada layar ini untuk mengaktifkan suara panggil.</div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <script>
-        // 1. MASUKKAN CONFIG FIREBASE ANDA DI SINI
         const firebaseConfig = {
-            apiKey: "ISI_API_KEY_ANDA",
-            authDomain: "PROJECT_ANDA.firebaseapp.com",
-            databaseURL: "https://PROJECT_ANDA-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "PROJECT_ANDA",
-            storageBucket: "PROJECT_ANDA.appspot.com",
-            messagingSenderId: "12345",
-            appId: "1:12345:web:abc"
+            apiKey: "AIzaSyD7...", // Silakan lengkapi apiKey Anda jika diperlukan
+            databaseURL: "https://antrianklinik-784b0-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "antrianklinik-784b0"
         };
         
         firebase.initializeApp(firebaseConfig);
@@ -50,30 +52,35 @@
         let suaraAktif = false;
         function aktifkanSuara() { 
             suaraAktif = true; 
-            console.log("Suara diaktifkan!");
+            document.querySelector('.footer').innerText = "🔊 Suara Aktif";
         }
 
-        // 2. MENDENGARKAN PERINTAH DARI HP
+        // Mendengarkan perubahan data dari HP
         db.ref('panggilan_klinik').on('value', (snapshot) => {
             const data = snapshot.val();
             if (data && data.trigger) {
-                prosesPanggilan(data.tipe, data.nomor);
+                updateTampilan(data.tipe, data.nomor);
+                panggilSuara(data.tipe, data.nomor);
             }
         });
 
-        function prosesPanggilan(tipe, nomor) {
-            // Update Tampilan di Layar
+        function updateTampilan(tipe, nomor) {
             if (tipe === 'Sunat') {
                 document.getElementById('nomor-sunat').innerText = 'N-' + nomor;
             } else {
-                document.getElementById('nomor-umum').innerText = (nomor > 50 ? 'S-' : 'P-') + nomor;
+                // Logika P jika <= 50, S jika > 50
+                let awalan = (nomor > 50) ? 'S-' : 'P-';
+                document.getElementById('nomor-umum').innerText = awalan + nomor;
             }
+        }
 
-            // Fungsi Suara (Gunakan ResponsiveVoice atau SpeechSynthesis)
+        function panggilSuara(tipe, nomor) {
             if (suaraAktif) {
-                const msg = new SpeechSynthesisUtterance(`Nomor antrian ${tipe} ${nomor}, silahkan menuju ruang periksa`);
-                msg.lang = 'id-ID';
-                window.speechSynthesis.speak(msg);
+                let teks = `Nomor antrian ${tipe}, ${nomor}, silahkan menuju ruang periksa.`;
+                const utterance = new SpeechSynthesisUtterance(teks);
+                utterance.lang = 'id-ID';
+                utterance.rate = 0.9;
+                window.speechSynthesis.speak(utterance);
             }
         }
     </script>
