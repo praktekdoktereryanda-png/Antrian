@@ -5,15 +5,15 @@
     <title>Remote HP</title>
     <style>
         body { font-family: sans-serif; background: #f1f2f6; padding: 20px; text-align: center; }
-        .btn { width: 100%; padding: 25px; font-size: 20px; font-weight: bold; color: white; border: none; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .btn { width: 100%; padding: 25px; font-size: 20px; font-weight: bold; color: white; border: none; border-radius: 15px; margin-bottom: 20px; }
         .btn-umum { background: #3498db; }
         .btn-sunat { background: #e67e22; }
-        .status { background: #2f3542; color: #7bed9f; padding: 10px; border-radius: 10px; font-family: monospace; font-size: 12px; }
+        .status { background: #2f3542; color: #7bed9f; padding: 10px; border-radius: 10px; font-family: monospace; }
     </style>
 </head>
 <body>
     <h2>REMOTE ANTRIAN</h2>
-    <div id="status" class="status">Menyambungkan ke Firebase...</div>
+    <div id="status" class="status">Menyambungkan...</div>
     <br>
     <button class="btn btn-umum" onclick="panggil('Umum')">PANGGIL UMUM (P/S)</button>
     <button class="btn btn-sunat" onclick="panggil('Sunat')">PANGGIL SUNAT (N)</button>
@@ -36,8 +36,16 @@
             document.getElementById('status').innerText = snap.val() ? "Status: TERHUBUNG ✅" : "Status: TERPUTUS ❌";
         });
 
+        // Ambil nomor terakhir agar saat refresh tidak kembali ke 0
         let nUmum = 0;
         let nSunat = 0;
+        db.ref('panggilan_terbaru').on('value', (s) => {
+            const d = s.val();
+            if(d) {
+                if(d.tipe === 'Umum') nUmum = d.nomor;
+                else nSunat = d.nomor;
+            }
+        });
 
         function panggil(tipe) {
             let nomor = (tipe === 'Umum') ? ++nUmum : ++nSunat;
@@ -45,8 +53,6 @@
                 tipe: tipe,
                 nomor: nomor,
                 waktu: Date.now()
-            }).then(() => {
-                console.log("Berhasil panggil " + tipe + " " + nomor);
             });
         }
     </script>
