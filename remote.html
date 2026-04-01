@@ -1,20 +1,15 @@
 <script>
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
-  authDomain: "antrian-klinik-cf6cb.firebaseapp.com",
-  databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "antrian-klinik-cf6cb",
-  storageBucket: "antrian-klinik-cf6cb.firebasestorage.app",
-  messagingSenderId: "737102197117",
-  appId: "1:737102197117:web:cc4752ea0c879741e35c14",
-  measurementId: "G-K11JPNJPBR"
+    apiKey: "ISI_API_KEY_ANDA",
+    authDomain: "antrian-klinik-cf6cb.firebaseapp.com",
+    databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "antrian-klinik-cf6cb",
 };
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// 🔥 Ambil data realtime
+// 🔥 Ambil data realtime (biar angka selalu update)
 db.ref('/').on('value', (snap) => {
     const data = snap.val() || {};
 
@@ -25,23 +20,27 @@ db.ref('/').on('value', (snap) => {
         "Nomor terakhir: " + (data.Sunat || 0);
 });
 
-// 🔥 Fungsi panggil FIX
+// 🔥 Fungsi panggil (FIX anti bentrok)
 function panggil(tipe) {
     db.ref('/').once('value').then((snap) => {
         const data = snap.val() || {};
 
+        let umum = data.Umum || 0;
+        let sunat = data.Sunat || 0;
         let nomorBaru = 0;
 
         if (tipe === 'Umum') {
-            nomorBaru = (data.Umum || 0) + 1;
+            umum++;
+            nomorBaru = umum;
         } else {
-            nomorBaru = (data.Sunat || 0) + 1;
+            sunat++;
+            nomorBaru = sunat;
         }
 
-        // 🔥 update ke Firebase
+        // 🔥 Kirim ke Firebase (sesuai struktur kamu)
         db.ref('/').set({
-            Umum: tipe === 'Umum' ? nomorBaru : (data.Umum || 0),
-            Sunat: tipe === 'Sunat' ? nomorBaru : (data.Sunat || 0),
+            Umum: umum,
+            Sunat: sunat,
             panggilan_klinik: {
                 tipe: tipe,
                 nomor: nomorBaru,
