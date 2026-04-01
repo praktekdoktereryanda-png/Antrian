@@ -1,60 +1,32 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Layar Antrian Klinik</title>
-    <style>
-        body { font-family: Arial, sans-serif; background: #2c3e50; color: white; text-align: center; padding-top: 50px; }
-        .card { background: white; color: #333; display: inline-block; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        #nomor { font-size: 150px; font-weight: bold; color: #2980b9; margin: 20px 0; }
-        .footer { margin-top: 30px; font-size: 14px; color: #bdc3c7; }
-    </style>
+    <title>Layar Antrian</title>
 </head>
-<body onclick="aktifkanSuara()">
-    <h1>ANTRIAN KLINIK</h1>
-    <div class="card">
-        <h2 id="tipe-antrian">ANTRIAN</h2>
-        <div id="nomor">0</div>
-    </div>
-    <div class="footer">Klik layar 1x agar suara muncul</div>
+<body onclick="window.speechSynthesis.speak(new SpeechSynthesisUtterance('Suara Aktif'))" style="text-align:center; font-family:sans-serif;">
+    <h1>NOMOR ANTRIAN</h1>
+    <div id="display" style="font-size:150px; font-weight:bold;">0</div>
+    <p>Klik layar ini 1x agar suara muncul</p>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        const firebaseConfig = {
+        const conf = {
             apiKey: "AIzaSyAUGh816sqOpUlCBvTpHaPlrSV_Gi4kHiU",
-            authDomain: "antrianklinik-784b0.firebaseapp.com",
             databaseURL: "https://antrianklinik-784b0-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "antrianklinik-784b0",
-            storageBucket: "antrianklinik-784b0.firebasestorage.app",
-            messagingSenderId: "432563775264",
-            appId: "1:432563775264:web:deae77713393f98ac91945"
+            projectId: "antrianklinik-784b0"
         };
-
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-
-        let bisaSuara = false;
-        function aktifkanSuara() { 
-            bisaSuara = true; 
-            document.querySelector('.footer').innerText = "🔊 Suara Aktif";
-        }
-
-        // Mendengarkan panggilan dari HP
-        db.ref('panggilan_klinik').on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data && data.trigger) {
-                const teksNomor = (data.tipe === 'Umum') ? (data.nomor > 50 ? 'S-' : 'P-') + data.nomor : 'N-' + data.nomor;
-                
-                document.getElementById('nomor').innerText = teksNomor;
-                document.getElementById('tipe-antrian').innerText = "ANTRIAN " + data.tipe.toUpperCase();
-
-                if (bisaSuara) {
-                    const pesan = new SpeechSynthesisUtterance(`Nomor antrian ${data.tipe} ${data.nomor}, silahkan masuk`);
-                    pesan.lang = 'id-ID';
-                    window.speechSynthesis.speak(pesan);
-                }
+        firebase.initializeApp(conf);
+        
+        // Harus mendengarkan 'antrian_sekarang'
+        firebase.database().ref('antrian_sekarang').on('value', (s) => {
+            const d = s.val();
+            if(d) {
+                document.getElementById('display').innerText = d.nomor;
+                let msg = new SpeechSynthesisUtterance("Nomor antrian " + d.nomor + " silakan masuk");
+                msg.lang = 'id-ID';
+                window.speechSynthesis.speak(msg);
             }
         });
     </script>
