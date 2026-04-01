@@ -5,14 +5,25 @@
 <title>TV Antrian Klinik</title>
 
 <style>
-body { margin:0; display:flex; height:100vh; }
-.num { font-size:80px; font-weight:bold; }
-.blink { animation: blinker 1s linear 3; }
-@keyframes blinker { 50% { opacity:0; } }
+body {
+    margin:0;
+    display:flex;
+    height:100vh;
+}
+.num {
+    font-size:80px;
+    font-weight:bold;
+}
+.blink {
+    animation: blinker 1s linear 3;
+}
+@keyframes blinker {
+    50% { opacity:0; }
+}
 </style>
 </head>
 
-<body onclick="startMedia()">
+<body onclick="aktifkanSuara()">
 
 <div style="width:50%; text-align:center;">
     <h2>Sunat</h2>
@@ -41,15 +52,14 @@ const db = firebase.database();
 let suaraAktif = false;
 let lastCall = "";
 
-function startMedia() {
+function aktifkanSuara() {
     suaraAktif = true;
 }
 
-// LISTENER
+// LISTENER UTAMA (SESUAI JSON)
 db.ref('panggilan_terbaru').on('value', snap => {
 
     const data = snap.val();
-    console.log("DATA:", data);
 
     if (!data || data.nomor === 0) return;
 
@@ -64,29 +74,29 @@ db.ref('panggilan_terbaru').on('value', snap => {
         kode = jam < 12 ? "P" : "S";
     }
 
-    const target = data.tipe === "Sunat"
+    const el = data.tipe === "Sunat"
         ? document.getElementById('display-sunat')
         : document.getElementById('display-umum');
 
-    target.innerText = `${kode}-${data.nomor.toString().padStart(2,'0')}`;
+    el.innerText = `${kode}-${data.nomor.toString().padStart(2,'0')}`;
 
-    target.classList.remove('blink');
-    void target.offsetWidth;
-    target.classList.add('blink');
+    // efek
+    el.classList.remove('blink');
+    void el.offsetWidth;
+    el.classList.add('blink');
 
+    // suara
     if (suaraAktif) {
         const suara = new SpeechSynthesisUtterance(
             `Nomor antrian ${kode} ${data.nomor}`
         );
         suara.lang = "id-ID";
+        speechSynthesis.cancel();
         speechSynthesis.speak(suara);
     }
 
 });
 </script>
-    db.ref('/').on('value', snap => {
-    console.log("ISI DATABASE:", snap.val());
-});
 
 </body>
 </html>
