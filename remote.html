@@ -147,10 +147,7 @@ function next(tipe) {
             const nomor = snapshot.val();
 
             // kirim ke layar TV
-            db.ref('panggilan_terbaru').set({
-                tipe: tipe,
-                nomor: nomor
-            });
+           db.ref('panggilan_terbaru').remove();
 
             console.log("NEXT:", tipe, nomor);
         }
