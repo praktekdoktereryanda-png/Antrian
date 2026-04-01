@@ -5,10 +5,10 @@
     <title>Remote HP</title>
     <style>
         body { font-family: sans-serif; background: #f1f2f6; padding: 20px; text-align: center; }
-        .btn { width: 100%; padding: 25px; font-size: 20px; font-weight: bold; color: white; border: none; border-radius: 15px; margin-bottom: 20px; }
+        .btn { width: 100%; padding: 25px; font-size: 20px; font-weight: bold; color: white; border: none; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
         .btn-umum { background: #3498db; }
         .btn-sunat { background: #e67e22; }
-        .status { background: #2f3542; color: #7bed9f; padding: 10px; border-radius: 10px; font-family: monospace; }
+        .status { background: #2f3542; color: #7bed9f; padding: 10px; border-radius: 10px; font-family: monospace; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -26,19 +26,25 @@
             apiKey: "AIzaSyAUGh816sqOpUlCBvTpHaPlrSV_Gi4kHiU",
             authDomain: "antrianklinik-784b0.firebaseapp.com",
             databaseURL: "https://antrianklinik-784b0-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "antrianklinik-784b0"
+            projectId: "antrianklinik-784b0",
+            storageBucket: "antrianklinik-784b0.firebasestorage.app",
+            messagingSenderId: "432563775264",
+            appId: "1:432563775264:web:e584f7c35e93a666c91945"
         };
 
-        firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
         const db = firebase.database();
 
         db.ref(".info/connected").on("value", (snap) => {
             document.getElementById('status').innerText = snap.val() ? "Status: TERHUBUNG ✅" : "Status: TERPUTUS ❌";
         });
 
-        // Ambil nomor terakhir agar saat refresh tidak kembali ke 0
         let nUmum = 0;
         let nSunat = 0;
+
+        // Ambil data terakhir agar tidak reset ke 1 saat refresh
         db.ref('panggilan_terbaru').on('value', (s) => {
             const d = s.val();
             if(d) {
