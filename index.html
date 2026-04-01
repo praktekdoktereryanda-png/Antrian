@@ -84,6 +84,9 @@ db.ref('panggilan_terbaru').on('value', snap => {
 
 });
 </script>
+    db.ref('/').on('value', snap => {
+    console.log("ISI DATABASE:", snap.val());
+});
 
 </body>
 </html>
