@@ -2,36 +2,52 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Remote</title>
+    <title>Remote HP</title>
+    <style>
+        body { font-family: sans-serif; background: #f1f2f6; padding: 20px; text-align: center; }
+        .btn { width: 100%; padding: 25px; font-size: 20px; font-weight: bold; color: white; border: none; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .btn-umum { background: #3498db; }
+        .btn-sunat { background: #e67e22; }
+        .status { background: #2f3542; color: #7bed9f; padding: 10px; border-radius: 10px; font-family: monospace; font-size: 12px; }
+    </style>
 </head>
-<body style="text-align:center; background:#222; color:white; font-family:sans-serif;">
+<body>
     <h2>REMOTE ANTRIAN</h2>
-    <button onclick="kirim(1)" style="width:90%; height:100px; background:blue; color:white; font-size:20px; border-radius:10px;">PANGGIL UMUM</button>
-    <br><br>
-    <div id="status">Menunggu...</div>
+    <div id="status" class="status">Menyambungkan ke Firebase...</div>
+    <br>
+    <button class="btn btn-umum" onclick="panggil('Umum')">PANGGIL UMUM (P/S)</button>
+    <button class="btn btn-sunat" onclick="panggil('Sunat')">PANGGIL SUNAT (N)</button>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        const conf = {
+        const firebaseConfig = {
             apiKey: "AIzaSyAUGh816sqOpUlCBvTpHaPlrSV_Gi4kHiU",
+            authDomain: "antrianklinik-784b0.firebaseapp.com",
             databaseURL: "https://antrianklinik-784b0-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "antrianklinik-784b0"
         };
-        firebase.initializeApp(conf);
+
+        firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        let n = 0;
-        function kirim(x) {
-            n++;
-            // Nama 'antrian_sekarang' harus SAMA dengan di index.html
-            db.ref('antrian_sekarang').set({
-                nomor: n,
+        db.ref(".info/connected").on("value", (snap) => {
+            document.getElementById('status').innerText = snap.val() ? "Status: TERHUBUNG ✅" : "Status: TERPUTUS ❌";
+        });
+
+        let nUmum = 0;
+        let nSunat = 0;
+
+        function panggil(tipe) {
+            let nomor = (tipe === 'Umum') ? ++nUmum : ++nSunat;
+            db.ref('panggilan_terbaru').set({
+                tipe: tipe,
+                nomor: nomor,
                 waktu: Date.now()
-            })
-            .then(() => { document.getElementById('status').innerText = "Berhasil panggil #" + n; })
-            .catch((e) => { alert("Error: " + e.message); });
+            }).then(() => {
+                console.log("Berhasil panggil " + tipe + " " + nomor);
+            });
         }
     </script>
 </body>
