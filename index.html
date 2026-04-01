@@ -68,7 +68,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-   // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
   authDomain: "antrian-klinik-cf6cb.firebaseapp.com",
@@ -76,113 +75,120 @@ const firebaseConfig = {
   projectId: "antrian-klinik-cf6cb",
   storageBucket: "antrian-klinik-cf6cb.firebasestorage.app",
   messagingSenderId: "737102197117",
-  appId: "1:737102197117:web:cc4752ea0c879741e35c14",
-  measurementId: "G-K11JPNJPBR"
+  appId: "1:737102197117:web:cc4752ea0c879741e35c14"
 };
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-        const videoFiles = ["video1.mp4", "video2.mp4"];
-        const posterFiles = ["Poster1.jpg", "Poster2.jpg", "Poster3.jpg"];
+console.log("TV CONNECTED ✅");
 
-        let currentVideoIdx = 0;
-        let currentPosterIdx = 0;
-        let suaraAktif = false;
-        let lastCall = "";
+const videoFiles = ["video1.mp4", "video2.mp4"];
+const posterFiles = ["Poster1.jpg", "Poster2.jpg", "Poster3.jpg"];
 
-        const vPlayer = document.getElementById('vPlayer');
+let currentVideoIdx = 0;
+let currentPosterIdx = 0;
+let suaraAktif = false;
+let lastCall = "";
 
-        function init() {
-            const container = document.getElementById('posterList');
+const vPlayer = document.getElementById('vPlayer');
 
-            posterFiles.forEach((file, index) => {
-                const img = document.createElement('img');
-                img.src = file;
-                img.className = `poster-img ${index === 0 ? 'active' : ''}`;
-                container.appendChild(img);
-            });
+function init() {
+    const container = document.getElementById('posterList');
 
-            setInterval(updateClock, 1000);
-        }
+    posterFiles.forEach((file, index) => {
+        const img = document.createElement('img');
+        img.src = file;
+        img.className = `poster-img ${index === 0 ? 'active' : ''}`;
+        container.appendChild(img);
+    });
 
-        function updateClock() {
-            document.getElementById('clock').innerText =
-                new Date().toLocaleTimeString('id-ID');
-        }
+    setInterval(updateClock, 1000);
+}
 
-        function startMedia() {
-            suaraAktif = true;
-            vPlayer.muted = false;
-            vPlayer.play();
-            startPosterCycle();
-        }
+function updateClock() {
+    document.getElementById('clock').innerText =
+        new Date().toLocaleTimeString('id-ID');
+}
 
-        function startPosterCycle() {
-            const posters = document.querySelectorAll('.poster-img');
-            if (posters.length === 0) return;
+function startMedia() {
+    suaraAktif = true;
+    vPlayer.muted = false;
+    vPlayer.play();
+    startPosterCycle();
+}
 
-            setInterval(() => {
-                posters[currentPosterIdx].classList.remove('active');
-                currentPosterIdx = (currentPosterIdx + 1) % posters.length;
-                posters[currentPosterIdx].classList.add('active');
-            }, 10000);
-        }
+function startPosterCycle() {
+    const posters = document.querySelectorAll('.poster-img');
 
-        vPlayer.onended = () => {
-            currentVideoIdx = (currentVideoIdx + 1) % videoFiles.length;
-            vPlayer.src = videoFiles[currentVideoIdx];
-            vPlayer.play();
-        };
+    setInterval(() => {
+        posters[currentPosterIdx].classList.remove('active');
+        currentPosterIdx = (currentPosterIdx + 1) % posters.length;
+        posters[currentPosterIdx].classList.add('active');
+    }, 10000);
+}
 
-        // 🔥 LISTENER FINAL
-        db.ref('panggilan_terbaru').on('value', (snapshot) => {
+vPlayer.onended = () => {
+    currentVideoIdx = (currentVideoIdx + 1) % videoFiles.length;
+    vPlayer.src = videoFiles[currentVideoIdx];
+    vPlayer.play();
+};
 
-            const data = snapshot.val();
-            if (!data || !data.tipe) return;
+// 🔥 LISTENER FINAL FIX
+db.ref('panggilan_terbaru').on('value', (snapshot) => {
 
-            const key = data.tipe + "-" + data.nomor;
-            if (key === lastCall) return;
-            lastCall = key;
+    const data = snapshot.val();
+    console.log("DATA MASUK:", data);
 
-            const jam = new Date().getHours();
-            let kode = "N";
+    if (!data) return;
 
-            if (data.tipe === 'Umum') {
-                kode = jam < 12 ? "P" : "S";
-            }
+    if (!data.tipe || data.nomor == null) {
+        console.log("FORMAT SALAH ❌", data);
+        return;
+    }
 
-            const targetId =
-                data.tipe === 'Sunat'
-                ? 'display-sunat'
-                : 'display-umum';
+    const key = data.tipe + "-" + data.nomor;
+    if (key === lastCall) return;
+    lastCall = key;
 
-            const el = document.getElementById(targetId);
+    const jam = new Date().getHours();
+    let kode = "N";
 
-            el.innerText = `${kode}-${data.nomor.toString().padStart(2, '0')}`;
+    if (data.tipe === 'Umum') {
+        kode = jam < 12 ? "P" : "S";
+    }
 
-            el.classList.remove('blink');
-            void el.offsetWidth;
-            el.classList.add('blink');
+    const targetId =
+        data.tipe === 'Sunat'
+        ? 'display-sunat'
+        : 'display-umum';
 
-            if (suaraAktif) {
-                window.speechSynthesis.cancel();
-                vPlayer.pause();
+    const el = document.getElementById(targetId);
 
-                const pesan = new SpeechSynthesisUtterance(
-                    `Nomor antrian ${kode} ${data.nomor}, silakan menuju ruang ${data.tipe}`
-                );
+    el.innerText = `${kode}-${data.nomor.toString().padStart(2, '0')}`;
 
-                pesan.lang = 'id-ID';
-                pesan.rate = 0.9;
+    el.classList.remove('blink');
+    void el.offsetWidth;
+    el.classList.add('blink');
 
-                pesan.onend = () => vPlayer.play();
+    if (suaraAktif) {
+        window.speechSynthesis.cancel();
+        vPlayer.pause();
 
-                window.speechSynthesis.speak(pesan);
-            }
-        });
+        const pesan = new SpeechSynthesisUtterance(
+            `Nomor antrian ${kode} ${data.nomor}, silakan menuju ruang ${data.tipe}`
+        );
 
-        init();
+        pesan.lang = 'id-ID';
+        pesan.rate = 0.9;
+
+        pesan.onend = () => vPlayer.play();
+
+        window.speechSynthesis.speak(pesan);
+    }
+});
+
+init();
     </script>
 
 </body>
