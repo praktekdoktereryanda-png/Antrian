@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>Sistem Antrian Klinik - Rumah Sunat Dokter Yanda</title>
-
     <style>
         body { margin: 0; padding: 0; background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; width: 100vw; overflow: hidden; }
         
@@ -41,7 +40,7 @@
             <div class="num" id="display-sunat">N-00</div>
         </div>
         <div class="card" style="border-top: 10px solid #3498db;">
-            <h2>PRAKTEK UMUM</h2>
+            <h2 id="label-umum">PRAKTEK UMUM</h2>
             <div class="num" id="display-umum" style="color: #3498db;">P-00</div>
         </div>
     </div>
@@ -55,136 +54,121 @@
     <div class="sidebar-right">
         <div class="poster-container" id="posterList"></div>
         <div id="clock">00:00:00</div>
-
         <div class="jadwal-box">
             <div class="jadwal-title">JADWAL PRAKTEK</div>
             <div class="jadwal-item"><b>Pagi:</b> 06:00 - 09:00</div>
             <div class="jadwal-item"><b>Sore:</b> 16:00 - 20:00</div>
             <div class="jadwal-item hari-tutup">Minggu & Hari Besar: TUTUP</div>
         </div>
-
         <p class="footer-name">Rumah Sunat Dokter Yanda</p>
     </div>
 
-    <!-- FIREBASE -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
-      authDomain: "antrian-klinik-cf6cb.firebaseapp.com",
-      databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "antrian-klinik-cf6cb"
-    };
+        // 🔥 CONFIG SUDAH DIPERBAIKI (WAJIB INI)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
+            authDomain: "antrian-klinik-cf6cb.firebaseapp.com",
+            databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "antrian-klinik-cf6cb"
+        };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-    const videoFiles = ["video1.mp4", "video2.mp4"];
-    const posterFiles = ["Poster1.jpg", "Poster2.jpg", "Poster3.jpg"];
+        const videoFiles = ["video1.mp4", "video2.mp4"]; 
+        const posterFiles = ["Poster1.jpg", "Poster2.jpg", "Poster3.jpg"]; 
 
-    let currentVideoIdx = 0;
-    let currentPosterIdx = 0;
-    let suaraAktif = false;
-    let lastCall = "";
+        let currentVideoIdx = 0;
+        let currentPosterIdx = 0;
+        let suaraAktif = false;
+        let lastCall = "";
 
-    const vPlayer = document.getElementById('vPlayer');
+        const vPlayer = document.getElementById('vPlayer');
 
-    function init() {
-        const container = document.getElementById('posterList');
+        function init() {
+            const container = document.getElementById('posterList');
+            posterFiles.forEach((file, index) => {
+                const img = document.createElement('img');
+                img.src = file;
+                img.className = `poster-img ${index === 0 ? 'active' : ''}`;
+                container.appendChild(img);
+            });
+            setInterval(updateClock, 1000);
+        }
 
-        posterFiles.forEach((file, index) => {
-            const img = document.createElement('img');
-            img.src = file;
-            img.className = `poster-img ${index === 0 ? 'active' : ''}`;
-            container.appendChild(img);
+        function updateClock() {
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString('id-ID');
+        }
+
+        function startMedia() {
+            suaraAktif = true;
+            vPlayer.muted = false;
+            vPlayer.play();
+            startPosterCycle();
+        }
+
+        function startPosterCycle() {
+            const posters = document.querySelectorAll('.poster-img');
+            setInterval(() => {
+                posters[currentPosterIdx].classList.remove('active');
+                currentPosterIdx = (currentPosterIdx + 1) % posters.length;
+                posters[currentPosterIdx].classList.add('active');
+            }, 10000);
+        }
+
+        vPlayer.onended = () => {
+            currentVideoIdx = (currentVideoIdx + 1) % videoFiles.length;
+            vPlayer.src = videoFiles[currentVideoIdx];
+            vPlayer.play();
+        };
+
+        // 🔥 LISTENER FINAL SESUAI JSON
+        db.ref('panggilan_terbaru').on('value', (snapshot) => {
+
+            const data = snapshot.val();
+            console.log("DATA:", data);
+
+            if (!data || data.nomor === 0) return;
+
+            const key = data.tipe + "-" + data.nomor;
+            if (key === lastCall) return;
+            lastCall = key;
+
+            const jam = new Date().getHours();
+            const kode = (data.tipe === 'Umum') ? (jam < 12 ? "P" : "S") : "N";
+
+            const targetId = data.tipe === 'Sunat'
+                ? 'display-sunat'
+                : 'display-umum';
+
+            const el = document.getElementById(targetId);
+            if (!el) return;
+
+            el.innerText = `${kode}-${data.nomor.toString().padStart(2, '0')}`;
+
+            el.classList.remove('blink');
+            void el.offsetWidth;
+            el.classList.add('blink');
+
+            if (suaraAktif) {
+                vPlayer.pause();
+
+                const pesan = new SpeechSynthesisUtterance(
+                    `Nomor antrian ${kode} ${data.nomor}, silakan menuju ruang ${data.tipe}`
+                );
+
+                pesan.lang = 'id-ID';
+                pesan.onend = () => vPlayer.play();
+
+                speechSynthesis.cancel();
+                speechSynthesis.speak(pesan);
+            }
         });
 
-        setInterval(updateClock, 1000);
-    }
-
-    function updateClock() {
-        document.getElementById('clock').innerText =
-            new Date().toLocaleTimeString('id-ID');
-    }
-
-    function startMedia() {
-        suaraAktif = true;
-        vPlayer.muted = false;
-        vPlayer.play();
-        startPosterCycle();
-    }
-
-    function startPosterCycle() {
-        const posters = document.querySelectorAll('.poster-img');
-        if (posters.length === 0) return;
-
-        setInterval(() => {
-            posters[currentPosterIdx].classList.remove('active');
-            currentPosterIdx = (currentPosterIdx + 1) % posters.length;
-            posters[currentPosterIdx].classList.add('active');
-        }, 10000);
-    }
-
-    vPlayer.onended = () => {
-        currentVideoIdx = (currentVideoIdx + 1) % videoFiles.length;
-        vPlayer.src = videoFiles[currentVideoIdx];
-        vPlayer.play();
-    };
-
-    // 🔥 LISTENER FINAL FIX
-    db.ref('panggilan_terbaru').on('value', (snapshot) => {
-
-        const data = snapshot.val();
-        console.log("DATA MASUK:", data);
-
-        if (!data || data.nomor === 0) return;
-
-        const key = data.tipe + "-" + data.nomor;
-        if (key === lastCall) return;
-        lastCall = key;
-
-        let kode = "N";
-        const jam = new Date().getHours();
-
-        if (data.tipe === 'Umum') {
-            kode = jam < 12 ? "P" : "S";
-        }
-
-        const targetId =
-            data.tipe === 'Sunat'
-            ? 'display-sunat'
-            : 'display-umum';
-
-        const el = document.getElementById(targetId);
-
-        if (!el) return;
-
-        el.innerText = `${kode}-${data.nomor.toString().padStart(2, '0')}`;
-
-        el.classList.remove('blink');
-        void el.offsetWidth;
-        el.classList.add('blink');
-
-        if (suaraAktif) {
-            window.speechSynthesis.cancel();
-            vPlayer.pause();
-
-            const pesan = new SpeechSynthesisUtterance(
-                `Nomor antrian ${kode} ${data.nomor}, silakan menuju ruang ${data.tipe}`
-            );
-
-            pesan.lang = 'id-ID';
-            pesan.rate = 0.9;
-
-            pesan.onend = () => vPlayer.play();
-
-            window.speechSynthesis.speak(pesan);
-        }
-    });
-
-    init();
+        init();
     </script>
 
 </body>
