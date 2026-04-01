@@ -1,51 +1,83 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Remote Antrian</title>
+  <title>Antrian Klinik</title>
+  <style>
+    body {
+      background: #2f3e4e;
+      font-family: Arial;
+      color: white;
+      text-align: center;
+    }
+
+    .card {
+      background: #3d4f63;
+      margin: 20px auto;
+      padding: 20px;
+      width: 300px;
+      border-radius: 10px;
+    }
+
+    .btn {
+      background: #2ecc71;
+      border: none;
+      padding: 15px;
+      width: 100%;
+      font-size: 18px;
+      color: white;
+      border-radius: 8px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background: #27ae60;
+    }
+  </style>
 </head>
+
 <body>
 
-  <h2>Antrian Umum: <span id="umum">0</span></h2>
-  <h2>Antrian Sunat: <span id="sunat">0</span></h2>
+  <div class="card">
+    <h2>ANTRIAN UMUM</h2>
+    <button class="btn">PANGGIL UMUM</button>
+    <p>Nomor terakhir: <span id="umum">0</span></p>
+  </div>
 
-  <h2>Panggilan:</h2>
-  <p>Nomor: <span id="nomor">0</span></p>
-  <p>Tipe: <span id="tipe">-</span></p>
+  <div class="card">
+    <h2>ANTRIAN SUNAT</h2>
+    <button class="btn">PANGGIL SUNAT</button>
+    <p>Nomor terakhir: <span id="sunat">0</span></p>
+  </div>
 
   <!-- Firebase -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-    // 🔥 CONFIG (PASTIKAN SAMA)
     const firebaseConfig = {
-     apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
-  authDomain: "antrian-klinik-cf6cb.firebaseapp.com",
-  databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "antrian-klinik-cf6cb",
-  storageBucket: "antrian-klinik-cf6cb.firebasestorage.app",
-  messagingSenderId: "737102197117",
-  appId: "1:737102197117:web:cc4752ea0c879741e35c14",
-  measurementId: "G-K11JPNJPBR"
+      apiKey: "ISI_API_KEY",
+      authDomain: "antrian-klinik-cf6cb.firebaseapp.com",
+      databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "antrian-klinik-cf6cb",
+      storageBucket: "antrian-klinik-cf6cb.appspot.com",
+      messagingSenderId: "ISI",
+      appId: "ISI"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // 🔥 Ambil data root
+    // 🔥 Ambil data realtime
     const rootRef = ref(db, "/");
 
     onValue(rootRef, (snapshot) => {
       const data = snapshot.val();
 
-      console.log("DATA:", data);
-
-      // Update UI
       document.getElementById("umum").innerText = data?.Umum ?? 0;
       document.getElementById("sunat").innerText = data?.Sunat ?? 0;
 
-      document.getElementById("nomor").innerText = data?.panggilan_klinik?.nomor ?? 0;
-      document.getElementById("tipe").innerText = data?.panggilan_klinik?.tipe ?? "-";
+      console.log("DATA:", data);
     });
 
   </script>
