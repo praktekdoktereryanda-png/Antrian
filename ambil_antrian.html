@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Ambil Antrian - Fix Print</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #2c3e50; padding-top: 100px; margin: 0; }
+        h1 { color: white; margin-bottom: 40px; }
+        .container { display: flex; justify-content: center; gap: 30px; }
+        .btn { 
+            width: 300px; height: 200px; font-size: 30px; font-weight: bold; 
+            cursor: pointer; border-radius: 25px; border: none; color: white;
+            transition: 0.2s; box-shadow: 0 10px #1a252f;
+        }
+        .btn:active { transform: translateY(5px); box-shadow: 0 5px #1a252f; }
+        .btn-sunat { background: #27ae60; }
+        .btn-dokter { background: #e74c3c; }
+
+        /* Sembunyikan elemen struk dari layar utama agar tidak mengganggu */
+        #hidden-struk { display: none; }
+    </style>
+</head>
+<body>
+
+    <h1>KLIK UNTUK AMBIL ANTRIAN</h1>
+    
+    <div class="container">
+        <button class="btn btn-sunat" onclick="prosesAntrian('SUNAT', 'S')">SUNAT</button>
+        <button class="btn btn-dokter" onclick="prosesAntrian('DOKTER', 'D')">DOKTER</button>
+    </div>
+
+    <script>
+        function prosesAntrian(namaLayanan, kode) {
+            // 1. Hitung Nomor
+            let currentNum = localStorage.getItem('count_' + kode) || 0;
+            currentNum = parseInt(currentNum) + 1;
+            localStorage.setItem('count_' + kode, currentNum);
+
+            const nomorAntrian = kode + "-" + currentNum.toString().padStart(2, '0');
+            const jam = new Date().toLocaleString('id-ID');
+
+            // 2. Kirim Sinyal ke TV
+            localStorage.setItem('trigger_panggil', kode + "|" + currentNum + "|" + Date.now());
+
+            // 3. Eksekusi Cetak dengan Jendela Baru (Mencegah Blank)
+            cetakStruk(nomorAntrian, namaLayanan, jam);
+        }
+
+        function cetakStruk(nomor, layanan, waktu) {
+            // Membuat jendela baru sementara untuk proses print
+            const printWindow = window.open('', '_blank', 'width=300,height=400');
+            
+            const kontenStruk = `
+                <html>
+                <head>
+                    <title>Cetak Struk</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 10px; color: black; }
+                        h2 { margin: 0; font-size: 18px; }
+                        hr { border: 0.5px dashed black; }
+                        .nomor { font-size: 60px; font-weight: bold; margin: 10px 0; }
+                        .layanan { font-size: 16px; font-weight: bold; }
+                        .footer { font-size: 10px; margin-top: 10px; }
+                    </style>
+                </head>
+                <body>
+                    <h2>NYUNAT.IN</h2>
+                    <p style="font-size:10px; margin:0;">Rumah Sunat Dokter Yanda</p>
+                    <hr>
+                    <p style="margin:5px 0;">NOMOR ANTRIAN</p>
+                    <div class="nomor">${nomor}</div>
+                    <div class="layanan">${layanan}</div>
+                    <hr>
+                    <div class="footer">${waktu}</div>
+                    <p style="font-size:9px;">Silahkan tunggu panggilan kami.</p>
+                    <script>
+                        // Langsung print setelah konten dimuat, lalu tutup jendela otomatis
+                        window.onload = function() {
+                            window.print();
+                            setTimeout(function() { window.close(); }, 500);
+                        };
+                    <\/script>
+                </body>
+                </html>
+            `;
+
+            printWindow.document.write(kontenStruk);
+            printWindow.document.close();
+        }
+    </script>
+</body>
+</html>

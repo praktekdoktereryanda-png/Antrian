@@ -1,0 +1,40 @@
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote Antrian</title>
+    <style>
+        body { font-family: sans-serif; background: #2c3e50; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+        button { height: 120px; font-size: 24px; font-weight: bold; border-radius: 20px; border: none; color: white; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .btn-sunat { background: #f1c40f; color: #2c3e50; }
+        .btn-umum { background: #3498db; }
+        .btn-reset { background: #e74c3c; height: 60px; font-size: 16px; margin-top: 50px; }
+    </style>
+</head>
+<body>
+    <button class="btn-sunat" onclick="kirim('Sunat')">PANGGIL SUNAT (N)</button>
+    <button class="btn-umum" onclick="kirim('Umum')">PANGGIL UMUM (P/S)</button>
+    <button class="btn-reset" onclick="reset()">RESET NOMOR</button>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script>
+        // MASUKKAN CONFIG YANG SAMA DENGAN DI ATAS
+        const firebaseConfig = { /* ... config anda ... */ };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        function kirim(tipe) {
+            db.ref('panggilan').set({
+                tipe: tipe,
+                trigger: Date.now() // Memberi tahu laptop ada perintah baru
+            });
+        }
+
+        function reset() {
+            if(confirm("Yakin reset antrian?")) {
+                db.ref('panggilan').set({ tipe: 'reset', trigger: Date.now() });
+            }
+        }
+    </script>
+</body>
+</html>
