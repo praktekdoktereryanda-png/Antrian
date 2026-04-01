@@ -120,7 +120,7 @@ const db = firebase.database();
 
 
 // 🔄 AMBIL DATA REALTIME
-db.ref('antrian').on('value', snap => {
+db.ref('panggilan_terbaru').on('value', snap => {
     const data = snap.val();
     if (!data) return;
 
