@@ -14,7 +14,7 @@
         .blink { animation: blinker 1s linear 3; }
         @keyframes blinker { 50% { opacity: 0; } }
 
-        .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; position: relative; }
+        .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; position:relative; }
         video { height: 100%; width: 100%; object-fit: cover; }
 
         .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; border-left: 2px solid #ddd; }
@@ -30,15 +30,15 @@
         .hari-tutup { color: #e74c3c; font-weight: bold; }
         .footer-name { font-weight: bold; color: #16a085; font-size: 1.2vw; margin: 10px 0; }
 
-        /* TAMBAHAN CONTROL (TIDAK UBAH UI) */
+        /* TAMBAHAN KONTROL (TIDAK UBAH UI) */
         #videoControl {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-            opacity: 0;
-            transition: opacity 0.3s;
+            position:absolute;
+            bottom:20px;
+            left:50%;
+            transform:translateX(-50%);
+            z-index:10;
+            opacity:0;
+            transition:0.3s;
         }
     </style>
 </head>
@@ -57,11 +57,12 @@
     </div>
 
     <div class="center-video">
-        <video id="vPlayer" playsinline muted>
-            <source src="video1.mp4" type="video/mp4">
+        <!-- FIX AUTOPLAY TV -->
+        <video id="vPlayer" autoplay muted playsinline>
+            <source src="/video1.mp4" type="video/mp4">
         </video>
 
-        <!-- ✅ CONTROL DINAMIS -->
+        <!-- KONTROL DINAMIS -->
         <div id="videoControl">
             <button onclick="togglePlay()" id="btnPlay">⏸</button>
             <button onclick="toggleMute()" id="btnMute">🔊</button>
@@ -86,174 +87,83 @@
     <script>
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
-            authDomain: "antrian-klinik-cf6cb.firebaseapp.com",
-            databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "antrian-klinik-cf6cb"
+            databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app"
         };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        const videoFiles = ["video1.mp4", "video2.mp4"];
-        const posterFiles = ["Poster1.jpg", "Poster2.jpg", "Poster3.jpg"];
-
+        const videoFiles = ["/video1.mp4","/video2.mp4"];
         let currentVideoIdx = 0;
-        let currentPosterIdx = 0;
         let suaraAktif = false;
-        let lastCall = "";
-        let posterInterval;
 
         const vPlayer = document.getElementById('vPlayer');
 
-        function init() {
-            const container = document.getElementById('posterList');
-            posterFiles.forEach((file, index) => {
-                const img = document.createElement('img');
-                img.src = file;
-                img.className = `poster-img ${index === 0 ? 'active' : ''}`;
-                container.appendChild(img);
-            });
-
-            setInterval(updateClock, 1000);
-        }
-
-        function updateClock() {
-            const now = new Date();
-            const jam = String(now.getHours()).padStart(2, '0');
-            const menit = String(now.getMinutes()).padStart(2, '0');
-            const detik = String(now.getSeconds()).padStart(2, '0');
-            document.getElementById('clock').innerText = `${jam}:${menit}:${detik}`;
+        /* FORCE PLAY (FIX TV) */
+        function forcePlay(){
+            let p = vPlayer.play();
+            if(p !== undefined){
+                p.catch(()=> setTimeout(()=>vPlayer.play(),1000));
+            }
         }
 
         function startMedia() {
             suaraAktif = true;
             vPlayer.muted = false;
-            vPlayer.play();
-            startPosterCycle();
+            forcePlay();
         }
 
-        function startPosterCycle() {
-            if (posterInterval) return;
+        window.addEventListener("load", forcePlay);
 
-            const posters = document.querySelectorAll('.poster-img');
-
-            posterInterval = setInterval(() => {
-                posters[currentPosterIdx].classList.remove('active');
-                currentPosterIdx = (currentPosterIdx + 1) % posters.length;
-                posters[currentPosterIdx].classList.add('active');
-            }, 10000);
-        }
-
+        /* LOOP VIDEO */
         vPlayer.onended = () => {
-            currentVideoIdx++;
-            if (currentVideoIdx >= videoFiles.length) currentVideoIdx = 0;
+            currentVideoIdx = (currentVideoIdx+1)%videoFiles.length;
             vPlayer.src = videoFiles[currentVideoIdx];
-            vPlayer.load();
             vPlayer.play();
         };
 
-        vPlayer.onerror = () => {
-            currentVideoIdx++;
-            if (currentVideoIdx >= videoFiles.length) currentVideoIdx = 0;
-            vPlayer.src = videoFiles[currentVideoIdx];
-            vPlayer.load();
-            vPlayer.play();
-        };
-
-        vPlayer.onpause = () => {
-            if (suaraAktif && !speechSynthesis.speaking) {
+        /* FIX STUCK TV */
+        setInterval(()=>{
+            if(vPlayer.paused && !vPlayer.ended){
                 vPlayer.play();
             }
-        };
+        },3000);
 
-        /* ===== KONTROL VIDEO DINAMIS ===== */
-        let hideControlTimer;
+        /* CONTROL DINAMIS */
+        let hideTimer;
 
-        function showControls() {
-            const control = document.getElementById("videoControl");
-            control.style.opacity = "1";
-
-            clearTimeout(hideControlTimer);
-            hideControlTimer = setTimeout(() => {
-                control.style.opacity = "0";
-            }, 3000);
+        function showControls(){
+            const c = document.getElementById("videoControl");
+            c.style.opacity = 1;
+            clearTimeout(hideTimer);
+            hideTimer = setTimeout(()=>c.style.opacity=0,3000);
         }
 
-        const videoArea = document.querySelector(".center-video");
-        videoArea.addEventListener("mousemove", showControls);
-        videoArea.addEventListener("touchstart", showControls);
+        document.querySelector(".center-video")
+            .addEventListener("mousemove", showControls);
 
-        vPlayer.addEventListener("click", () => {
-            togglePlay();
-        });
+        vPlayer.addEventListener("click", togglePlay);
 
-        function togglePlay() {
-            const btn = document.getElementById("btnPlay");
-
-            if (vPlayer.paused) {
+        function togglePlay(){
+            const b = document.getElementById("btnPlay");
+            if(vPlayer.paused){
                 vPlayer.play();
-                btn.innerText = "⏸";
-            } else {
+                b.innerText="⏸";
+            }else{
                 vPlayer.pause();
-                btn.innerText = "▶️";
+                b.innerText="▶️";
             }
         }
 
-        function toggleMute() {
-            const btn = document.getElementById("btnMute");
-
-            vPlayer.muted = !vPlayer.muted;
-            btn.innerText = vPlayer.muted ? "🔇" : "🔊";
+        function toggleMute(){
+            const b = document.getElementById("btnMute");
+            vPlayer.muted=!vPlayer.muted;
+            b.innerText = vPlayer.muted?"🔇":"🔊";
         }
 
-        vPlayer.onplay = () => {
-            const btn = document.getElementById("btnPlay");
-            if (btn) btn.innerText = "⏸";
-        };
+        vPlayer.onplay = ()=> btnPlay.innerText="⏸";
+        vPlayer.onpause = ()=> btnPlay.innerText="▶️";
 
-        /* ===== FIREBASE ===== */
-        db.ref('panggilan_terbaru').on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (!data || data.nomor === 0) return;
-
-            const key = data.tipe + "-" + data.nomor;
-            if (key === lastCall) return;
-            lastCall = key;
-
-            const jam = new Date().getHours();
-            const kode = (data.tipe === 'Umum') ? (jam < 12 ? "P" : "S") : "N";
-
-            const targetId = data.tipe === 'Sunat'
-                ? 'display-sunat'
-                : 'display-umum';
-
-            const el = document.getElementById(targetId);
-            if (!el) return;
-
-            el.innerText = `${kode}-${data.nomor.toString().padStart(2, '0')}`;
-
-            el.classList.remove('blink');
-            void el.offsetWidth;
-            el.classList.add('blink');
-
-            if (suaraAktif) {
-                vPlayer.pause();
-
-                const nomor = data.nomor.toString().padStart(2, '0').split('').join(' ');
-
-                const pesan = new SpeechSynthesisUtterance(
-                    `Nomor antrian ${kode} ${nomor}, silakan menuju ruang ${data.tipe}`
-                );
-
-                pesan.lang = 'id-ID';
-                pesan.onend = () => vPlayer.play();
-
-                speechSynthesis.cancel();
-                speechSynthesis.speak(pesan);
-            }
-        });
-
-        init();
     </script>
 
 </body>
