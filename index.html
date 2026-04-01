@@ -17,7 +17,7 @@
         <div class="label" id="label-tipe">ANTRIAN</div>
         <div id="nomor">00</div>
     </div>
-    <div class="footer">Klik di mana saja pada layar ini untuk mengaktifkan suara panggil.</div>
+    <div class="footer" id="status-suara">Klik di mana saja agar suara aktif 🔈</div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -36,29 +36,21 @@
         let suaraAktif = false;
         function aktifkanSuara() { 
             suaraAktif = true; 
-            document.querySelector('.footer').innerText = "🔊 Suara Panggil Aktif";
+            document.getElementById('status-suara').innerText = "🔊 Suara Panggil Siap";
         }
 
         db.ref('panggilan_terbaru').on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 let nomorTampil = data.nomor;
-                let awalan = "";
+                let awalan = (data.tipe === 'Umum') ? (nomorTampil > 50 ? "S-" : "P-") : "N-";
 
-                if (data.tipe === 'Umum') {
-                    awalan = (data.nomor > 50) ? "S-" : "P-";
-                } else {
-                    awalan = "N-";
-                }
-
-                const teksLengkap = awalan + nomorTampil;
-                document.getElementById('nomor').innerText = teksLengkap;
+                document.getElementById('nomor').innerText = awalan + nomorTampil;
                 document.getElementById('label-tipe').innerText = "ANTRIAN " + data.tipe;
 
                 if (suaraAktif) {
                     const pesan = new SpeechSynthesisUtterance(`Nomor antrian ${data.tipe}, ${nomorTampil}, silakan masuk`);
                     pesan.lang = 'id-ID';
-                    pesan.rate = 0.9;
                     window.speechSynthesis.speak(pesan);
                 }
             }
