@@ -2,63 +2,69 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Remote HP</title>
+    <title>Remote Antrian</title>
     <style>
-        body { font-family: sans-serif; background: #f1f2f6; padding: 20px; text-align: center; }
-        .btn { width: 100%; padding: 25px; font-size: 20px; font-weight: bold; color: white; border: none; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-        .btn-umum { background: #3498db; }
-        .btn-sunat { background: #e67e22; }
-        .status { background: #2f3542; color: #7bed9f; padding: 10px; border-radius: 10px; font-family: monospace; font-size: 12px; }
+        body { font-family: sans-serif; background: #2c3e50; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .card { background: #34495e; padding: 20px; border-radius: 15px; color: white; text-align: center; }
+        button { width: 100%; height: 80px; font-size: 20px; font-weight: bold; border-radius: 10px; border: none; cursor: pointer; transition: 0.2s; }
+        .btn-call { background: #2ecc71; color: white; margin-bottom: 10px; }
+        .btn-call:active { background: #27ae60; transform: scale(0.95); }
+        .status { font-size: 14px; color: #bdc3c7; margin-top: 10px; }
     </style>
 </head>
 <body>
-    <h2>REMOTE ANTRIAN</h2>
-    <div id="status" class="status">Menyambungkan...</div>
-    <br>
-    <button class="btn btn-umum" onclick="panggil('Umum')">PANGGIL UMUM (P/S)</button>
-    <button class="btn btn-sunat" onclick="panggil('Sunat')">PANGGIL SUNAT (N)</button>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <div class="card">
+        <h3>ANTRIAN UMUM</h3>
+        <button class="btn-call" onclick="panggil('Umum')">PANGGIL UMUM</button>
+        <div id="stat-umum" class="status">Nomor terakhir: 0</div>
+    </div>
+
+    <div class="card">
+        <h3>ANTRIAN SUNAT</h3>
+        <button class="btn-call" onclick="panggil('Sunat')">PANGGIL SUNAT</button>
+        <div id="stat-sunat" class="status">Nomor terakhir: 0</div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <script>
+        // MASUKKAN CONFIG YANG SAMA PERSIS DENGAN INDEX.HTML
         const firebaseConfig = {
-            apiKey: "AIzaSyAUGh816sqOpUlCBvTpHaPlrSV_Gi4kHiU",
-            authDomain: "antrianklinik-784b0.firebaseapp.com",
-            databaseURL: "https://antrianklinik-784b0-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "antrianklinik-784b0",
-            storageBucket: "antrianklinik-784b0.firebasestorage.app",
-            messagingSenderId: "432563775264",
-            appId: "1:432563775264:web:e584f7c35e93a666c91945"
+            apiKey: "ISI_API_KEY_ANDA",
+            authDomain: "PROJECT_ANDA.firebaseapp.com",
+            databaseURL: "https://PROJECT_ANDA-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "PROJECT_ANDA",
+            storageBucket: "PROJECT_ANDA.appspot.com",
+            messagingSenderId: "12345",
+            appId: "1:12345:web:abc"
         };
 
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        db.ref(".info/connected").on("value", (snap) => {
-            document.getElementById('status').innerText = snap.val() ? "Status: TERHUBUNG ✅" : "Status: TERPUTUS ❌";
-        });
-
+        // Variabel penyimpan nomor (nanti bisa diambil dari database agar sinkron)
         let nUmum = 0;
         let nSunat = 0;
 
-        // Ambil data terakhir agar tidak reset ke 1 saat refresh
-        db.ref('panggilan_terbaru').on('value', (s) => {
-            const d = s.val();
-            if(d) {
-                if(d.tipe === 'Umum') nUmum = d.nomor;
-                else nSunat = d.nomor;
-            }
-        });
-
         function panggil(tipe) {
-            let nomor = (tipe === 'Umum') ? ++nUmum : ++nSunat;
-            db.ref('panggilan_terbaru').set({
+            let nomor = 0;
+            if (tipe === 'Umum') {
+                nUmum++;
+                nomor = nUmum;
+                document.getElementById('stat-umum').innerText = "Nomor terakhir: " + nomor;
+            } else {
+                nSunat++;
+                nomor = nSunat;
+                document.getElementById('stat-sunat').innerText = "Nomor terakhir: " + nomor;
+            }
+
+            // KIRIM DATA KE FIREBASE
+            db.ref('panggilan_klinik').set({
                 tipe: tipe,
                 nomor: nomor,
-                waktu: Date.now()
+                trigger: Date.now() // Trigger agar laptop merespon
             });
         }
     </script>
