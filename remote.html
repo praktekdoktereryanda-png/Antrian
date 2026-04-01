@@ -9,7 +9,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// 🔥 Ambil data realtime (biar angka selalu update)
+// 🔥 Ambil data realtime biar status selalu update
 db.ref('/').on('value', (snap) => {
     const data = snap.val() || {};
 
@@ -20,7 +20,7 @@ db.ref('/').on('value', (snap) => {
         "Nomor terakhir: " + (data.Sunat || 0);
 });
 
-// 🔥 Fungsi panggil (FIX anti bentrok)
+// 🔥 Fungsi panggil FIX (anti bentrok)
 function panggil(tipe) {
     db.ref('/').once('value').then((snap) => {
         const data = snap.val() || {};
@@ -37,7 +37,7 @@ function panggil(tipe) {
             nomorBaru = sunat;
         }
 
-        // 🔥 Kirim ke Firebase (sesuai struktur kamu)
+        // 🔥 Update SEMUA ke Firebase (sinkron display)
         db.ref('/').set({
             Umum: umum,
             Sunat: sunat,
