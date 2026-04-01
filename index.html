@@ -1,153 +1,30 @@
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+// konek ke firebase
+const db = firebase.database();
 
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
-  authDomain: "antrian-klinik-cf6cb.firebaseapp.com",
-  databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "antrian-klinik-cf6cb",
-  storageBucket: "antrian-klinik-cf6cb.firebasestorage.app",
-  messagingSenderId: "737102197117",
-  appId: "1:737102197117:web:cc4752ea0c879741e35c14",
-  measurementId: "G-K11JPNJPBR"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-// --- KONFIGURASI FILE ---
-const videoFiles = ["video1.mp4", "video2.mp4", "video3.mp4"];
-const posterFiles = ["Poster1.jpg", "Poster2.jpg", "Poster3.jpg"];
-
-// --- STATE ---
-let antrian = { Sunat: 0, Umum: 0 };
-let currentVideoIdx = 0;
-let currentPosterIdx = 0;
-let lastTrigger = 0;
-const vPlayer = document.getElementById('vPlayer');
-
-// --- INIT ---
-function init() {
-    const container = document.getElementById('posterList');
-    posterFiles.forEach((file, index) => {
-        const img = document.createElement('img');
-        img.src = file;
-        img.className = `poster-img ${index === 0 ? 'active' : ''}`;
-        container.appendChild(img);
-    });
-
-    vPlayer.src = videoFiles[0];
-    setInterval(updateClockAndStatus, 1000);
-}
-
-// --- STATUS ---
-function getStatusUmum() {
-    const sekarang = new Date();
-    const jam = sekarang.getHours();
-    const hari = sekarang.getDay();
-
-    if (hari === 0) return { kode: 'X', label: 'KLINIK TUTUP' };
-    if (jam >= 6 && jam < 9) return { kode: 'P', label: 'PRAKTEK PAGI' };
-    if (jam >= 16 && jam < 20) return { kode: 'S', label: 'PRAKTEK SORE' };
-    return { kode: 'U', label: 'PRAKTEK UMUM' };
-}
-
-function updateDisplay() {
-    const status = getStatusUmum();
-    document.getElementById('display-sunat').innerText = `N-${antrian.Sunat.toString().padStart(2, '0')}`;
-    document.getElementById('display-umum').innerText = `${status.kode}-${antrian.Umum.toString().padStart(2, '0')}`;
-    document.getElementById('label-umum').innerText = status.label;
-}
-
-function updateClockAndStatus() {
-    const sekarang = new Date();
-    document.getElementById('clock').innerText = sekarang.toLocaleTimeString('id-ID');
-    document.getElementById('label-umum').innerText = getStatusUmum().label;
-}
-
-// --- FIREBASE REALTIME ---
-onValue(ref(db, "/"), (snapshot) => {
-    const data = snapshot.val();
+db.ref('/panggilan_klinik').on('value', (snap) => {
+    const data = snap.val();
     if (!data) return;
 
-    antrian.Sunat = data.Sunat || 0;
-    antrian.Umum = data.Umum || 0;
+    const { tipe, nomor } = data;
 
+    // update antrian
+    antrian[tipe] = nomor;
     updateDisplay();
 
-    // 🔊 trigger suara
-    if (data.panggilan_klinik && data.panggilan_klinik.trigger !== lastTrigger) {
-        lastTrigger = data.panggilan_klinik.trigger;
+    // animasi
+    const targetId = tipe === 'Sunat' ? 'display-sunat' : 'display-umum';
+    const el = document.getElementById(targetId);
 
-        const tipe = data.panggilan_klinik.tipe;
-        const nomor = data.panggilan_klinik.nomor.toString().padStart(2, '0');
-        const kode = tipe === 'Sunat' ? 'N' : getStatusUmum().kode;
-
-        suaraAsisten(kode, nomor, tipe);
-
-        const targetId = tipe === 'Sunat' ? 'display-sunat' : 'display-umum';
-        const el = document.getElementById(targetId);
+    if (el) {
         el.classList.remove('blink');
         void el.offsetWidth;
         el.classList.add('blink');
     }
+
+    // suara
+    suaraAsisten(
+        tipe === 'Sunat' ? 'N' : getStatusUmum().kode,
+        nomor.toString().padStart(2, '0'),
+        tipe
+    );
 });
-
-// --- MEDIA ---
-window.startMedia = function() {
-    vPlayer.muted = false;
-    vPlayer.play();
-    startPosterCycle();
-};
-
-vPlayer.onended = () => {
-    currentVideoIdx = (currentVideoIdx + 1) % videoFiles.length;
-    vPlayer.src = videoFiles[currentVideoIdx];
-    vPlayer.play();
-};
-
-function startPosterCycle() {
-    const posters = document.querySelectorAll('.poster-img');
-    if (posters.length <= 1) return;
-    setInterval(() => {
-        posters[currentPosterIdx].classList.remove('active');
-        currentPosterIdx = (currentPosterIdx + 1) % posters.length;
-        posters[currentPosterIdx].classList.add('active');
-    }, 10000);
-}
-
-// --- SUARA ---
-function suaraAsisten(huruf, angka, tujuan) {
-    window.speechSynthesis.cancel();
-    vPlayer.pause();
-
-    const ejaanAngka = angka.split('').join(' ');
-    const pesan = `Nomor antrian. ${huruf}. ${ejaanAngka}. Silahkan menuju ruang. ${tujuan}.`;
-
-    const utter = new SpeechSynthesisUtterance(pesan);
-    utter.lang = 'id-ID';
-    utter.rate = 0.8;
-    utter.onend = () => vPlayer.play();
-
-    window.speechSynthesis.speak(utter);
-}
-
-// --- RESET ---
-window.resetData = function() {
-    if(confirm("Reset Antrian?")) {
-        set(ref(db, "/"), {
-            Sunat: 0,
-            Umum: 0,
-            panggilan_klinik: {
-                nomor: 0,
-                tipe: "Umum",
-                trigger: Date.now()
-            }
-        });
-    }
-};
-
-init();
-</script>
