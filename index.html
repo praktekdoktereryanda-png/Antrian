@@ -1,32 +1,66 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-    <title>Layar Antrian</title>
+    <meta charset="UTF-8">
+    <title>Layar Antrian Klinik</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #1e272e; color: white; text-align: center; margin: 0; padding-top: 50px; }
+        .container { background: #ffffff; color: #2c3e50; display: inline-block; padding: 50px; border-radius: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); border-top: 15px solid #3498db; }
+        #nomor { font-size: 180px; font-weight: bold; margin: 10px 0; color: #2c3e50; }
+        .label { font-size: 30px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 2px; }
+        .footer { margin-top: 40px; color: #808e9b; font-size: 14px; }
+    </style>
 </head>
-<body onclick="window.speechSynthesis.speak(new SpeechSynthesisUtterance('Suara Aktif'))" style="text-align:center; font-family:sans-serif;">
-    <h1>NOMOR ANTRIAN</h1>
-    <div id="display" style="font-size:150px; font-weight:bold;">0</div>
-    <p>Klik layar ini 1x agar suara muncul</p>
+<body onclick="aktifkanSuara()">
+    <h1>SISTEM ANTRIAN KLINIK</h1>
+    <div class="container">
+        <div class="label" id="label-tipe">ANTRIAN</div>
+        <div id="nomor">00</div>
+    </div>
+    <div class="footer">Klik di mana saja pada layar ini untuk mengaktifkan suara panggil.</div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        const conf = {
+        const firebaseConfig = {
             apiKey: "AIzaSyAUGh816sqOpUlCBvTpHaPlrSV_Gi4kHiU",
+            authDomain: "antrianklinik-784b0.firebaseapp.com",
             databaseURL: "https://antrianklinik-784b0-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "antrianklinik-784b0"
         };
-        firebase.initializeApp(conf);
-        
-        // Harus mendengarkan 'antrian_sekarang'
-        firebase.database().ref('antrian_sekarang').on('value', (s) => {
-            const d = s.val();
-            if(d) {
-                document.getElementById('display').innerText = d.nomor;
-                let msg = new SpeechSynthesisUtterance("Nomor antrian " + d.nomor + " silakan masuk");
-                msg.lang = 'id-ID';
-                window.speechSynthesis.speak(msg);
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let suaraAktif = false;
+        function aktifkanSuara() { 
+            suaraAktif = true; 
+            document.querySelector('.footer').innerText = "🔊 Suara Panggil Aktif";
+        }
+
+        db.ref('panggilan_terbaru').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                let nomorTampil = data.nomor;
+                let awalan = "";
+
+                if (data.tipe === 'Umum') {
+                    awalan = (data.nomor > 50) ? "S-" : "P-";
+                } else {
+                    awalan = "N-";
+                }
+
+                const teksLengkap = awalan + nomorTampil;
+                document.getElementById('nomor').innerText = teksLengkap;
+                document.getElementById('label-tipe').innerText = "ANTRIAN " + data.tipe;
+
+                if (suaraAktif) {
+                    const pesan = new SpeechSynthesisUtterance(`Nomor antrian ${data.tipe}, ${nomorTampil}, silakan masuk`);
+                    pesan.lang = 'id-ID';
+                    pesan.rate = 0.9;
+                    window.speechSynthesis.speak(pesan);
+                }
             }
         });
     </script>
