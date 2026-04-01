@@ -3,98 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Remote Antrian Klinik</title>
+    <title>Remote Final Antrian</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; padding: 20px; text-align: center; }
-        .container { max-width: 400px; margin: auto; background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        h2 { color: #2c3e50; margin-bottom: 5px; }
-        .status { font-size: 12px; margin-bottom: 20px; padding: 5px; border-radius: 5px; }
-        .online { background: #d4edda; color: #155724; }
-        .offline { background: #f8d7da; color: #721c24; }
-        
-        .btn { width: 100%; padding: 25px; font-size: 18px; font-weight: bold; color: white; border: none; border-radius: 15px; margin-bottom: 15px; cursor: pointer; transition: 0.2s; }
-        .btn-umum { background: #3498db; }
-        .btn-sunat { background: #e67e22; }
-        .btn-reset { background: #95a5a6; font-size: 14px; padding: 10px; margin-top: 20px; }
-        .btn:active { transform: scale(0.98); opacity: 0.9; }
-        
-        .last-num { font-size: 14px; color: #7f8c8d; margin-top: 10px; }
+        body { font-family: sans-serif; text-align: center; background: #1a1a1a; color: white; padding: 20px; }
+        .box { background: #333; padding: 20px; border-radius: 15px; border: 2px solid #444; }
+        .btn { width: 100%; padding: 30px; font-size: 20px; font-weight: bold; border-radius: 15px; border: none; margin: 10px 0; cursor: pointer; color: white; }
+        .btn-umum { background: #007bff; }
+        .btn-sunat { background: #fd7e14; }
+        #log { font-family: monospace; font-size: 12px; background: black; color: #0f0; padding: 10px; margin-top: 20px; text-align: left; height: 100px; overflow-y: scroll; border-radius: 5px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>REMOTE KLINIK</h2>
-    <div id="status-koneksi" class="status offline">Mencoba Menyambung...</div>
+    <div class="box">
+        <h2>REMOTE KLINIK</h2>
+        <button class="btn btn-umum" onclick="panggil('Umum')">PANGGIL UMUM</button>
+        <button class="btn btn-sunat" onclick="panggil('Sunat')">PANGGIL SUNAT</button>
+        <div id="log">Menunggu perintah...</div>
+    </div>
 
-    <button class="btn btn-umum" onclick="kirim('Umum')">PANGGIL UMUM (P/S)</button>
-    <button class="btn btn-sunat" onclick="kirim('Sunat')">PANGGIL SUNAT (N)</button>
-    
-    <div class="last-num">Nomor Terakhir: <span id="label-nomor">0</span></div>
-    
-    <button class="btn btn-reset" onclick="resetData()">RESET NOMOR</button>
-</div>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
-<script>
-    // KONFIGURASI SESUAI DATA ANDA
-    const firebaseConfig = {
-        apiKey: "AIzaSyAUGh816sqOpUlCBvTpHaPlrSV_Gi4kHiU",
-        authDomain: "antrianklinik-784b0.firebaseapp.com",
-        databaseURL: "https://antrianklinik-784b0-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "antrianklinik-784b0",
-        storageBucket: "antrianklinik-784b0.firebasestorage.app",
-        messagingSenderId: "432563775264",
-        appId: "1:432563775264:web:deae77713393f98ac91945"
-    };
-
-    // Inisialisasi
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    // Pantau Status Koneksi
-    db.ref(".info/connected").on("value", (snap) => {
-        const div = document.getElementById('status-koneksi');
-        if (snap.val() === true) {
-            div.innerText = "Koneksi Aktif ✅";
-            div.className = "status online";
-        } else {
-            div.innerText = "Terputus ❌ (Cek Internet)";
-            div.className = "status offline";
+    <script>
+        function updateLog(msg) {
+            const log = document.getElementById('log');
+            log.innerHTML += "> " + msg + "<br>";
+            log.scrollTop = log.scrollHeight;
         }
-    });
 
-    let counterUmum = 0;
-    let counterSunat = 0;
+        const firebaseConfig = {
+            apiKey: "AIzaSyAUGh816sqOpUlCBvTpHaPlrSV_Gi4kHiU",
+            authDomain: "antrianklinik-784b0.firebaseapp.com",
+            databaseURL: "https://antrianklinik-784b0-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "antrianklinik-784b0",
+            storageBucket: "antrianklinik-784b0.firebasestorage.app",
+            messagingSenderId: "432563775264",
+            appId: "1:432563775264:web:deae77713393f98ac91945"
+        };
 
-    function kirim(tipe) {
-        let nomor = (tipe === 'Umum') ? ++counterUmum : ++counterSunat;
-        
-        // Kirim ke Firebase dengan deteksi error
-        db.ref('panggilan_klinik').set({
-            tipe: tipe,
-            nomor: nomor,
-            trigger: Date.now()
-        }, (error) => {
-            if (error) {
-                alert("GAGAL KIRIM: " + error.message);
+        try {
+            firebase.initializeApp(firebaseConfig);
+            var db = firebase.database();
+            updateLog("Firebase siap.");
+        } catch (e) {
+            updateLog("Error Init: " + e.message);
+        }
+
+        // Cek koneksi ke server
+        db.ref(".info/connected").on("value", (snap) => {
+            if (snap.val() === true) {
+                updateLog("Sinyal ke Firebase: OK ✅");
             } else {
-                document.getElementById('label-nomor').innerText = nomor;
+                updateLog("Sinyal ke Firebase: TERPUTUS ❌");
             }
         });
-    }
 
-    function resetData() {
-        if(confirm("Reset semua nomor ke 0?")) {
-            counterUmum = 0;
-            counterSunat = 0;
-            db.ref('panggilan_klinik').set({ tipe: 'Reset', nomor: 0, trigger: Date.now() });
-            document.getElementById('label-nomor').innerText = "0";
+        let n = 0;
+        function panggil(tipe) {
+            n++;
+            updateLog("Mencoba panggil " + tipe + " #" + n);
+            
+            db.ref('panggilan_klinik').set({
+                tipe: tipe,
+                nomor: n,
+                trigger: Date.now()
+            })
+            .then(() => {
+                updateLog("BERHASIL: Data terkirim ke cloud! ✨");
+            })
+            .catch((error) => {
+                updateLog("GAGAL: " + error.message);
+                alert("Error: " + error.message);
+            });
         }
-    }
-</script>
-
+    </script>
 </body>
 </html>
