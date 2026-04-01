@@ -1,86 +1,66 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Antrian Klinik</title>
-  <style>
-    body {
-      background: #2f3e4e;
-      font-family: Arial;
-      color: white;
-      text-align: center;
-    }
-
-    .card {
-      background: #3d4f63;
-      margin: 20px auto;
-      padding: 20px;
-      width: 300px;
-      border-radius: 10px;
-    }
-
-    .btn {
-      background: #2ecc71;
-      border: none;
-      padding: 15px;
-      width: 100%;
-      font-size: 18px;
-      color: white;
-      border-radius: 8px;
-      margin-top: 10px;
-      cursor: pointer;
-    }
-
-    .btn:hover {
-      background: #27ae60;
-    }
-  </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote HP</title>
+    <style>
+        body { font-family: sans-serif; background: #f1f2f6; padding: 20px; text-align: center; }
+        .btn { width: 100%; padding: 25px; font-size: 20px; font-weight: bold; color: white; border: none; border-radius: 15px; margin-bottom: 20px; cursor: pointer; }
+        .btn-umum { background: #3498db; }
+        .btn-sunat { background: #e67e22; }
+        .btn-reset { background: #dcdde1; color: #2f3542; margin-top: 30px; padding: 10px; font-size: 14px; }
+        .status { background: #2f3542; color: #7bed9f; padding: 10px; border-radius: 10px; font-family: monospace; font-size: 12px; }
+    </style>
 </head>
-
 <body>
+    <h2>REMOTE ANTRIAN</h2>
+    <div id="status" class="status">Menyambungkan...</div>
+    <br>
+    <button class="btn btn-umum" onclick="panggil('Umum')">PANGGIL UMUM (P/S)</button>
+    <button class="btn btn-sunat" onclick="panggil('Sunat')">PANGGIL SUNAT (N)</button>
+    <button class="btn btn-reset" onclick="resetData()">Reset Antrian Ke 0</button>
 
-  <div class="card">
-    <h2>ANTRIAN UMUM</h2>
-    <button class="btn">PANGGIL UMUM</button>
-    <p>Nomor terakhir: <span id="umum">0</span></p>
-  </div>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-  <div class="card">
-    <h2>ANTRIAN SUNAT</h2>
-    <button class="btn">PANGGIL SUNAT</button>
-    <p>Nomor terakhir: <span id="sunat">0</span></p>
-  </div>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAUGh816sqOpUlCBvTpHaPlrSV_Gi4kHiU",
+            authDomain: "antrianklinik-784b0.firebaseapp.com",
+            databaseURL: "https://antrianklinik-784b0-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "antrianklinik-784b0"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-  <!-- Firebase -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+        db.ref(".info/connected").on("value", (snap) => {
+            document.getElementById('status').innerText = snap.val() ? "Status: TERHUBUNG ✅" : "Status: TERPUTUS ❌";
+        });
 
-    const firebaseConfig = {
-      apiKey: "ISI_API_KEY",
-      authDomain: "antrian-klinik-cf6cb.firebaseapp.com",
-      databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "antrian-klinik-cf6cb",
-      storageBucket: "antrian-klinik-cf6cb.appspot.com",
-      messagingSenderId: "ISI",
-      appId: "ISI"
-    };
+        let nUmum = 0;
+        let nSunat = 0;
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+        // Sinkronisasi nomor terakhir agar tidak balik ke 0 saat refresh HP
+        db.ref('panggilan_terbaru').on('value', (s) => {
+            const d = s.val();
+            if(d) {
+                if(d.tipe === 'Umum') nUmum = d.nomor;
+                else if(d.tipe === 'Sunat') nSunat = d.nomor;
+            } else {
+                nUmum = 0; nSunat = 0;
+            }
+        });
 
-    // 🔥 Ambil data realtime
-    const rootRef = ref(db, "/");
+        function panggil(tipe) {
+            let nomor = (tipe === 'Umum') ? ++nUmum : ++nSunat;
+            db.ref('panggilan_terbaru').set({ tipe: tipe, nomor: nomor, waktu: Date.now() });
+        }
 
-    onValue(rootRef, (snapshot) => {
-      const data = snapshot.val();
-
-      document.getElementById("umum").innerText = data?.Umum ?? 0;
-      document.getElementById("sunat").innerText = data?.Sunat ?? 0;
-
-      console.log("DATA:", data);
-    });
-
-  </script>
-
+        function resetData() {
+            if(confirm("Yakin ingin reset nomor ke 0?")) {
+                db.ref('panggilan_terbaru').remove();
+            }
+        }
+    </script>
 </body>
 </html>
