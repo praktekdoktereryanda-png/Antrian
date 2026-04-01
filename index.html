@@ -1,58 +1,86 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Layar Antrian Klinik</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #1e272e; color: white; text-align: center; margin: 0; padding-top: 50px; }
-        .container { background: white; color: #2c3e50; display: inline-block; padding: 50px; border-radius: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); border-top: 15px solid #3498db; }
-        #nomor { font-size: 180px; font-weight: bold; margin: 10px 0; }
-        .label { font-size: 30px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 2px; }
-        .footer { margin-top: 40px; color: #808e9b; font-size: 14px; }
-    </style>
+  <title>Antrian Klinik</title>
+  <style>
+    body {
+      background: #2f3e4e;
+      font-family: Arial;
+      color: white;
+      text-align: center;
+    }
+
+    .card {
+      background: #3d4f63;
+      margin: 20px auto;
+      padding: 20px;
+      width: 300px;
+      border-radius: 10px;
+    }
+
+    .btn {
+      background: #2ecc71;
+      border: none;
+      padding: 15px;
+      width: 100%;
+      font-size: 18px;
+      color: white;
+      border-radius: 8px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background: #27ae60;
+    }
+  </style>
 </head>
-<body onclick="aktifkanSuara()">
-    <h1>SISTEM ANTRIAN KLINIK</h1>
-    <div class="container">
-        <div class="label" id="label-tipe">ANTRIAN</div>
-        <div id="nomor">00</div>
-    </div>
-    <div class="footer" id="status-suara">Klik di mana saja agar suara aktif 🔈</div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<body>
 
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyAUGh816sqOpUlCBvTpHaPlrSV_Gi4kHiU",
-            authDomain: "antrianklinik-784b0.firebaseapp.com",
-            databaseURL: "https://antrianklinik-784b0-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "antrianklinik-784b0"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+  <div class="card">
+    <h2>ANTRIAN UMUM</h2>
+    <button class="btn">PANGGIL UMUM</button>
+    <p>Nomor terakhir: <span id="umum">0</span></p>
+  </div>
 
-        let suaraAktif = false;
-        function aktifkanSuara() { 
-            suaraAktif = true; 
-            document.getElementById('status-suara').innerText = "🔊 Suara Panggil Aktif";
-        }
+  <div class="card">
+    <h2>ANTRIAN SUNAT</h2>
+    <button class="btn">PANGGIL SUNAT</button>
+    <p>Nomor terakhir: <span id="sunat">0</span></p>
+  </div>
 
-        db.ref('panggilan_terbaru').on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                let nomorTampil = data.nomor;
-                let awalan = (data.tipe === 'Umum') ? (nomorTampil > 50 ? "S-" : "P-") : "N-";
-                document.getElementById('nomor').innerText = awalan + nomorTampil;
-                document.getElementById('label-tipe').innerText = "ANTRIAN " + data.tipe;
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-                if (suaraAktif) {
-                    const pesan = new SpeechSynthesisUtterance(`Nomor antrian ${data.tipe}, ${nomorTampil}, silakan masuk`);
-                    pesan.lang = 'id-ID';
-                    window.speechSynthesis.speak(pesan);
-                }
-            }
-        });
-    </script>
+    const firebaseConfig = {
+      apiKey: "ISI_API_KEY",
+      authDomain: "antrian-klinik-cf6cb.firebaseapp.com",
+      databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "antrian-klinik-cf6cb",
+      storageBucket: "antrian-klinik-cf6cb.appspot.com",
+      messagingSenderId: "ISI",
+      appId: "ISI"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // 🔥 Ambil data realtime
+    const rootRef = ref(db, "/");
+
+    onValue(rootRef, (snapshot) => {
+      const data = snapshot.val();
+
+      document.getElementById("umum").innerText = data?.Umum ?? 0;
+      document.getElementById("sunat").innerText = data?.Sunat ?? 0;
+
+      console.log("DATA:", data);
+    });
+
+  </script>
+
 </body>
 </html>
