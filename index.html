@@ -2,16 +2,10 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Antrian Klinik - Rumah Sunat Dokter Yanda</title>
     <style>
-        body { 
-            margin: 0; padding: 0; background-color: #f4f7f6; 
-            font-family: 'Segoe UI', sans-serif; display: flex; 
-            height: 100vh; width: 100vw; overflow: hidden; outline: none; 
-        }
+        body { margin: 0; padding: 0; background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; width: 100vw; overflow: hidden; }
         
-        /* Bagian Kiri: Nomor Antrian */
         .sidebar-left { width: 30%; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 20px; background: #fff; border-right: 2px solid #ddd; }
         .card { background: #fff; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #eee; }
         .card h2 { margin: 0; font-size: 2vw; color: #34495e; border-bottom: 5px solid #f1c40f; display: inline-block; text-transform: uppercase; }
@@ -20,16 +14,14 @@
         .blink { animation: blinker 1s linear 3; }
         @keyframes blinker { 50% { opacity: 0; } }
 
-        /* Bagian Tengah: Video Player */
-        .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; position: relative; }
-        video { height: 100%; width: 100%; object-fit: cover; background: #000; }
+        .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; }
+        video { height: 100%; width: 100%; object-fit: cover; }
 
-        /* Bagian Kanan: Poster & Info */
         .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; border-left: 2px solid #ddd; }
         .poster-container { width: 95%; aspect-ratio: 4 / 5; position: relative; overflow: hidden; border-radius: 15px; background: #000; box-shadow: 0 15px 35px rgba(0,0,0,0.2); margin-bottom: 10px; }
         
-        .poster-img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; opacity: 0; transition: opacity 1.5s ease-in-out; z-index: 1; }
-        .poster-img.active { opacity: 1; z-index: 10; }
+        .poster-img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; opacity: 0; transition: opacity 1.5s ease-in-out; }
+        .poster-img.active { opacity: 1; }
 
         #clock { font-size: 3.5vw; font-weight: bold; color: #2c3e50; margin-top: auto; }
         .jadwal-box { background: #f9f9f9; border: 2px solid #e0e0e0; border-radius: 10px; padding: 10px; width: 90%; text-align: center; margin-top: 5px; }
@@ -40,7 +32,7 @@
     </style>
 </head>
 
-<body tabindex="0" onclick="startMedia()" onkeydown="startMedia()">
+<body onclick="startMedia()">
 
     <div class="sidebar-left">
         <div class="card">
@@ -48,13 +40,15 @@
             <div class="num" id="display-sunat">N-00</div>
         </div>
         <div class="card" style="border-top: 10px solid #3498db;">
-            <h2>PRAKTEK UMUM</h2>
+            <h2 id="label-umum">PRAKTEK UMUM</h2>
             <div class="num" id="display-umum" style="color: #3498db;">P-00</div>
         </div>
     </div>
 
     <div class="center-video">
-        <video id="vPlayer" playsinline muted autoplay></video>
+        <video id="vPlayer" playsinline muted>
+            <source src="video1.mp4" type="video/mp4">
+        </video>
     </div>
 
     <div class="sidebar-right">
@@ -83,7 +77,6 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Daftar File Media
         const videoFiles = ["video1.mp4", "video2.mp4"]; 
         const posterFiles = ["Poster1.jpg", "Poster2.jpg", "Poster3.jpg"]; 
 
@@ -95,23 +88,14 @@
         const vPlayer = document.getElementById('vPlayer');
 
         function init() {
-            // Setup Poster
             const container = document.getElementById('posterList');
-            container.innerHTML = ''; 
             posterFiles.forEach((file, index) => {
                 const img = document.createElement('img');
                 img.src = file;
                 img.className = `poster-img ${index === 0 ? 'active' : ''}`;
                 container.appendChild(img);
             });
-
-            updateClock();
             setInterval(updateClock, 1000);
-            startPosterCycle();
-            
-            // Fokus untuk Remote TV
-            document.body.focus();
-            playCurrentVideo();
         }
 
         function updateClock() {
@@ -119,16 +103,14 @@
         }
 
         function startMedia() {
-            if (!suaraAktif) {
-                suaraAktif = true;
-                vPlayer.muted = false;
-                vPlayer.play().catch(() => {});
-            }
+            suaraAktif = true;
+            vPlayer.muted = false;
+            vPlayer.play();
+            startPosterCycle();
         }
 
         function startPosterCycle() {
             const posters = document.querySelectorAll('.poster-img');
-            if (posters.length <= 1) return;
             setInterval(() => {
                 posters[currentPosterIdx].classList.remove('active');
                 currentPosterIdx = (currentPosterIdx + 1) % posters.length;
@@ -136,43 +118,19 @@
             }, 10000);
         }
 
-        // --- FUNGSI VIDEO LOOPING (MENGULANG TERUS) ---
-        function playCurrentVideo() {
-            console.log("Memutar: " + videoFiles[currentVideoIdx]);
+        // --- FITUR MENGULANG VIDEO TERUS MENERUS ---
+        vPlayer.onended = () => {
+            // Pindah ke video berikutnya, jika sudah habis balik ke index 0 (video pertama)
+            currentVideoIdx = (currentVideoIdx + 1) % videoFiles.length;
             
-            vPlayer.pause();
-            vPlayer.removeAttribute('src'); 
+            // Tambahkan parameter unik agar browser TV tidak mengambil dari cache yang macet
+            vPlayer.src = videoFiles[currentVideoIdx] + "?t=" + new Date().getTime();
+            
             vPlayer.load();
-            
-            // Tambahkan timestamp (?v=...) agar browser TV tidak stuck pada cache
-            vPlayer.src = videoFiles[currentVideoIdx] + "?v=" + new Date().getTime();
-            vPlayer.load();
-            
-            vPlayer.play().catch(err => {
-                console.log("Menunggu aksi remote untuk suara...");
-            });
-        }
-
-        // Kejadian otomatis saat video selesai
-        vPlayer.onended = function() {
-            currentVideoIdx++;
-            
-            // Reset ke 0 jika sudah mencapai video terakhir (LOOPING)
-            if (currentVideoIdx >= videoFiles.length) {
-                currentVideoIdx = 0;
-            }
-            
-            playCurrentVideo();
+            vPlayer.play().catch(e => console.log("Menunggu interaksi..."));
         };
 
-        // Jika file video error/tidak ditemukan
-        vPlayer.onerror = function() {
-            currentVideoIdx++;
-            if (currentVideoIdx >= videoFiles.length) currentVideoIdx = 0;
-            playCurrentVideo();
-        };
-
-        // --- LISTENER FIREBASE (PANGGILAN) ---
+        // Firebase Listener
         db.ref('panggilan_terbaru').on('value', (snapshot) => {
             const data = snapshot.val();
             if (!data || data.nomor === 0) return;
@@ -197,13 +155,13 @@
                 vPlayer.pause();
                 const pesan = new SpeechSynthesisUtterance(`Nomor antrian ${kode} ${data.nomor}, silakan menuju ruang ${data.tipe}`);
                 pesan.lang = 'id-ID';
-                pesan.onend = () => vPlayer.play().catch(() => {});
+                pesan.onend = () => vPlayer.play();
                 speechSynthesis.cancel();
                 speechSynthesis.speak(pesan);
             }
         });
 
-        window.onload = init;
+        init();
     </script>
 </body>
 </html>
