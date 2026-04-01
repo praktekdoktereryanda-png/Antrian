@@ -30,58 +30,62 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
-      authDomain: "antrian-klinik-cf6cb.firebaseapp.com",
-      databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "antrian-klinik-cf6cb",
-      storageBucket: "antrian-klinik-cf6cb.firebasestorage.app",
-      messagingSenderId: "737102197117",
-      appId: "1:737102197117:web:cc4752ea0c879741e35c14"
-    };
+    document.addEventListener("DOMContentLoaded", function () {
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+        const firebaseConfig = {
+          apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
+          authDomain: "antrian-klinik-cf6cb.firebaseapp.com",
+          databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app",
+          projectId: "antrian-klinik-cf6cb",
+          storageBucket: "antrian-klinik-cf6cb.firebasestorage.app",
+          messagingSenderId: "737102197117",
+          appId: "1:737102197117:web:cc4752ea0c879741e35c14"
+        };
 
-    // ✅ AMBIL DATA REALTIME (AMAN)
-    db.ref('/').on('value', (snap) => {
-        const data = snap.val() || {};
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-        const umumEl = document.getElementById('stat-umum');
-        const sunatEl = document.getElementById('stat-sunat');
-
-        if (umumEl) umumEl.innerText = "Nomor terakhir: " + (data.Umum || 0);
-        if (sunatEl) sunatEl.innerText = "Nomor terakhir: " + (data.Sunat || 0);
-    });
-
-    // ✅ PANGGIL (SYNC DENGAN DATABASE)
-    function panggil(tipe) {
-        db.ref('/').once('value').then((snap) => {
+        // realtime update
+        db.ref('/').on('value', (snap) => {
             const data = snap.val() || {};
 
-            let umum = data.Umum || 0;
-            let sunat = data.Sunat || 0;
-            let nomorBaru = 0;
+            const umumEl = document.getElementById('stat-umum');
+            const sunatEl = document.getElementById('stat-sunat');
 
-            if (tipe === 'Umum') {
-                umum++;
-                nomorBaru = umum;
-            } else {
-                sunat++;
-                nomorBaru = sunat;
-            }
-
-            db.ref('/').set({
-                Umum: umum,
-                Sunat: sunat,
-                panggilan_klinik: {
-                    tipe: tipe,
-                    nomor: nomorBaru,
-                    trigger: Date.now()
-                }
-            });
+            if (umumEl) umumEl.innerText = "Nomor terakhir: " + (data.Umum || 0);
+            if (sunatEl) sunatEl.innerText = "Nomor terakhir: " + (data.Sunat || 0);
         });
-    }
+
+        // fungsi global biar tombol bisa akses
+        window.panggil = function(tipe) {
+            db.ref('/').once('value').then((snap) => {
+                const data = snap.val() || {};
+
+                let umum = data.Umum || 0;
+                let sunat = data.Sunat || 0;
+                let nomorBaru = 0;
+
+                if (tipe === 'Umum') {
+                    umum++;
+                    nomorBaru = umum;
+                } else {
+                    sunat++;
+                    nomorBaru = sunat;
+                }
+
+                db.ref('/').set({
+                    Umum: umum,
+                    Sunat: sunat,
+                    panggilan_klinik: {
+                        tipe: tipe,
+                        nomor: nomorBaru,
+                        trigger: Date.now()
+                    }
+                });
+            });
+        }
+
+    });
     </script>
 
 </body>
