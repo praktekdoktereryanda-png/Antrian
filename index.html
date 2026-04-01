@@ -1,65 +1,72 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Layar Antrian Klinik</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote Antrian</title>
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: #1e272e; color: white; text-align: center; margin: 0; padding-top: 50px; }
-        .container { background: #ffffff; color: #2c3e50; display: inline-block; padding: 50px; border-radius: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); border-top: 15px solid #3498db; }
-        #nomor { font-size: 180px; font-weight: bold; margin: 10px 0; color: #2c3e50; }
-        .label { font-size: 30px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 2px; }
-        .footer { margin-top: 40px; color: #808e9b; font-size: 14px; }
+        body { font-family: sans-serif; background: #2c3e50; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .card { background: #34495e; padding: 20px; border-radius: 15px; color: white; text-align: center; }
+        button { width: 100%; height: 80px; font-size: 20px; font-weight: bold; border-radius: 10px; border: none; cursor: pointer; transition: 0.2s; }
+        .btn-call { background: #2ecc71; color: white; margin-bottom: 10px; }
+        .btn-call:active { background: #27ae60; transform: scale(0.95); }
+        .status { font-size: 14px; color: #bdc3c7; margin-top: 10px; }
     </style>
 </head>
-<body onclick="aktifkanSuara()">
-    <h1>SISTEM ANTRIAN KLINIK</h1>
-    <div class="container">
-        <div class="label" id="label-tipe">ANTRIAN</div>
-        <div id="nomor">00</div>
-    </div>
-    <div class="footer" id="status-suara">Klik di mana saja agar suara aktif 🔈</div>
+<body>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <div class="card">
+        <h3>ANTRIAN UMUM</h3>
+        <button class="btn-call" onclick="panggil('Umum')">PANGGIL UMUM</button>
+        <div id="stat-umum" class="status">Nomor terakhir: 0</div>
+    </div>
+
+    <div class="card">
+        <h3>ANTRIAN SUNAT</h3>
+        <button class="btn-call" onclick="panggil('Sunat')">PANGGIL SUNAT</button>
+        <div id="stat-sunat" class="status">Nomor terakhir: 0</div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <script>
+        // MASUKKAN CONFIG YANG SAMA PERSIS DENGAN INDEX.HTML
         const firebaseConfig = {
-            apiKey: "AIzaSyAUGh816sqOpUlCBvTpHaPlrSV_Gi4kHiU",
-            authDomain: "antrianklinik-784b0.firebaseapp.com",
-            databaseURL: "https://antrianklinik-784b0-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "antrianklinik-784b0",
-            storageBucket: "antrianklinik-784b0.firebasestorage.app",
-            messagingSenderId: "432563775264",
-            appId: "1:432563775264:web:e584f7c35e93a666c91945"
+            apiKey: "ISI_API_KEY_ANDA",
+            authDomain: "PROJECT_ANDA.firebaseapp.com",
+            databaseURL: "https://PROJECT_ANDA-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "PROJECT_ANDA",
+            storageBucket: "PROJECT_ANDA.appspot.com",
+            messagingSenderId: "12345",
+            appId: "1:12345:web:abc"
         };
 
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        let suaraAktif = false;
-        function aktifkanSuara() { 
-            suaraAktif = true; 
-            document.getElementById('status-suara').innerText = "🔊 Suara Panggil Siap";
-        }
+        // Variabel penyimpan nomor (nanti bisa diambil dari database agar sinkron)
+        let nUmum = 0;
+        let nSunat = 0;
 
-        db.ref('panggilan_terbaru').on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                let nomorTampil = data.nomor;
-                let awalan = (data.tipe === 'Umum') ? (nomorTampil > 50 ? "S-" : "P-") : "N-";
-
-                document.getElementById('nomor').innerText = awalan + nomorTampil;
-                document.getElementById('label-tipe').innerText = "ANTRIAN " + data.tipe;
-
-                if (suaraAktif) {
-                    const pesan = new SpeechSynthesisUtterance(`Nomor antrian ${data.tipe}, ${nomorTampil}, silakan masuk`);
-                    pesan.lang = 'id-ID';
-                    window.speechSynthesis.speak(pesan);
-                }
+        function panggil(tipe) {
+            let nomor = 0;
+            if (tipe === 'Umum') {
+                nUmum++;
+                nomor = nUmum;
+                document.getElementById('stat-umum').innerText = "Nomor terakhir: " + nomor;
+            } else {
+                nSunat++;
+                nomor = nSunat;
+                document.getElementById('stat-sunat').innerText = "Nomor terakhir: " + nomor;
             }
-        });
+
+            // KIRIM DATA KE FIREBASE
+            db.ref('panggilan_klinik').set({
+                tipe: tipe,
+                nomor: nomor,
+                trigger: Date.now() // Trigger agar laptop merespon
+            });
+        }
     </script>
 </body>
 </html>
