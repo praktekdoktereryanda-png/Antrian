@@ -146,11 +146,13 @@ vPlayer.play();
 
 /* ANTRIAN AUDIO */
 function playAntrian(kode,nomor,tipe){
-const angka=nomor.toString().padStart(2,'0').split('');
 
-let files=[
+const angka = nomor.toString().padStart(2,'0').split('');
+
+let files = [
 "/audio/bell.mp3",
 "/audio/antrian.mp3",
+"/audio/nomor.mp3",
 `/audio/${kode}.mp3`
 ];
 
@@ -158,7 +160,11 @@ angka.forEach(a=>{
 files.push(`/audio/${a}.mp3`);
 });
 
-files.push(`/audio/${tipe.toLowerCase()}.mp3`);
+if(tipe==="Umum"){
+files.push("/audio/umum.mp3");
+}else{
+files.push("/audio/sunat.mp3");
+}
 
 playSequence(files);
 }
