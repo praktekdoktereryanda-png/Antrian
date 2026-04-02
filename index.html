@@ -126,10 +126,29 @@ new Date().toLocaleTimeString("id-ID");
 },1000);
 
 /* VIDEO LOOP */
-vPlayer.onended=()=>{
-videoIndex=(videoIndex+1)%videoFiles.length;
-vPlayer.src=videoFiles[videoIndex];
-vPlayer.play();
+function playNextVideo(){
+
+    currentVideoIdx = (currentVideoIdx + 1) % videoFiles.length;
+
+    vPlayer.src = videoFiles[currentVideoIdx];
+    vPlayer.load();
+
+    const playPromise = vPlayer.play();
+
+    if (playPromise !== undefined) {
+        playPromise.catch(() => {
+            console.log("Autoplay diblok, tunggu klik user");
+        });
+    }
+}
+
+/* 🔁 LOOP NORMAL */
+vPlayer.onended = playNextVideo;
+
+/* ❌ ERROR LANGSUNG SKIP */
+vPlayer.onerror = () => {
+    console.log("Video error, skip ke berikutnya");
+    playNextVideo();
 };
 
 /* AUDIO */
