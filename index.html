@@ -107,33 +107,27 @@
         }
 
         /* AUDIO SEQUENCE FIX TOTAL */
-        function playSequence(list) {
-            let i = 0;
+       async function playSequence(list) {
+    for (let i = 0; i < list.length; i++) {
+        try {
+            audioPlayer.src = list[i];
+            console.log("Play:", list[i]);
 
-            function next() {
-                if (i >= list.length) {
-                    vPlayer.play();
-                    return;
-                }
+            await audioPlayer.play();
 
-                audioPlayer.src = list[i];
-                console.log("Play:", list[i]);
+            await new Promise(resolve => {
+                audioPlayer.onended = resolve;
+            });
 
-                audioPlayer.play().then(() => {
-                    audioPlayer.onended = () => {
-                        i++;
-                        setTimeout(next, i === 1 ? 500 : 150);
-                    };
-                }).catch(() => {
-                    console.log("Skip:", list[i]);
-                    i++;
-                    next();
-                });
-            }
+            await new Promise(r => setTimeout(r, i === 0 ? 500 : 150));
 
-            next();
+        } catch (e) {
+            console.log("Skip:", list[i]);
         }
+    }
 
+    vPlayer.play(); // balik ke video
+}
         function playAntrian(kode, nomor, tipe) {
 
             const angka = nomor.toString().padStart(2, '0').split('');
