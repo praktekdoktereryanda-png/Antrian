@@ -29,191 +29,141 @@
         .jadwal-item { font-size: 1vw; color: #555; margin: 2px 0; }
         .hari-tutup { color: #e74c3c; font-weight: bold; }
         .footer-name { font-weight: bold; color: #16a085; font-size: 1.2vw; margin: 10px 0; }
-
-        /* CONTROL VIDEO (TAMBAHAN TANPA UBAH UI) */
-        #videoControl {
-            position:absolute;
-            bottom:20px;
-            left:50%;
-            transform:translateX(-50%);
-            z-index:10;
-            opacity:0;
-            transition:0.3s;
-        }
     </style>
 </head>
 
 <body onclick="startMedia()">
 
-    <div class="sidebar-left">
-        <div class="card">
-            <h2>ANTRIAN SUNAT</h2>
-            <div class="num" id="display-sunat">N-00</div>
-        </div>
-        <div class="card" style="border-top: 10px solid #3498db;">
-            <h2 id="label-umum">PRAKTEK UMUM</h2>
-            <div class="num" id="display-umum" style="color: #3498db;">P-00</div>
-        </div>
+<div class="sidebar-left">
+    <div class="card">
+        <h2>ANTRIAN SUNAT</h2>
+        <div class="num" id="display-sunat">N-00</div>
     </div>
-
-    <div class="center-video">
-        <video id="vPlayer" autoplay muted playsinline>
-            <source src="/video1.mp4" type="video/mp4">
-        </video>
-
-        <div id="videoControl">
-            <button onclick="togglePlay()" id="btnPlay">⏸</button>
-            <button onclick="toggleMute()" id="btnMute">🔊</button>
-        </div>
+    <div class="card" style="border-top: 10px solid #3498db;">
+        <h2>PRAKTEK UMUM</h2>
+        <div class="num" id="display-umum" style="color:#3498db;">P-00</div>
     </div>
+</div>
 
-    <div class="sidebar-right">
-        <div class="poster-container" id="posterList"></div>
-        <div id="clock">00:00:00</div>
-        <div class="jadwal-box">
-            <div class="jadwal-title">JADWAL PRAKTEK</div>
-            <div class="jadwal-item"><b>Pagi:</b> 06:00 - 09:00</div>
-            <div class="jadwal-item"><b>Sore:</b> 16:00 - 20:00</div>
-            <div class="jadwal-item hari-tutup">Minggu & Hari Besar: TUTUP</div>
-        </div>
-        <p class="footer-name">Rumah Sunat Dokter Yanda</p>
+<div class="center-video">
+    <video id="vPlayer" autoplay muted playsinline>
+        <source src="/video1.mp4" type="video/mp4">
+    </video>
+</div>
+
+<div class="sidebar-right">
+    <div class="poster-container" id="posterList"></div>
+    <div id="clock">00:00:00</div>
+    <div class="jadwal-box">
+        <div class="jadwal-title">JADWAL PRAKTEK</div>
+        <div class="jadwal-item"><b>Pagi:</b> 06:00 - 09:00</div>
+        <div class="jadwal-item"><b>Sore:</b> 16:00 - 20:00</div>
+        <div class="jadwal-item hari-tutup">Minggu & Hari Besar: TUTUP</div>
     </div>
+    <p class="footer-name">Rumah Sunat Dokter Yanda</p>
+</div>
 
-    <!-- AUDIO -->
-    <audio id="audioPlayer"></audio>
+<audio id="audioPlayer"></audio>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-    <script>
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app"
-        };
+<script>
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app"
+};
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-        const vPlayer = document.getElementById('vPlayer');
-        const audioPlayer = document.getElementById('audioPlayer');
+const vPlayer = document.getElementById('vPlayer');
+const audioPlayer = document.getElementById('audioPlayer');
 
-        let suaraAktif = false;
-        let lastCall = "";
+let suaraAktif = false;
+let lastCall = "";
 
-        function startMedia() {
-            suaraAktif = true;
-            vPlayer.muted = false;
-            vPlayer.play();
-        }
+function startMedia(){
+    suaraAktif = true;
+    vPlayer.muted = false;
+    vPlayer.play();
+}
 
-        /* AUDIO SEQUENCE FIX TOTAL */
-       async function playSequence(list) {
-    for (let i = 0; i < list.length; i++) {
-        try {
+/* 🔥 AUDIO FIX UNTUK TV */
+async function playSequence(list){
+    for(let i=0;i<list.length;i++){
+        try{
             audioPlayer.src = list[i];
             console.log("Play:", list[i]);
 
             await audioPlayer.play();
 
-            await new Promise(resolve => {
+            await new Promise(resolve=>{
                 audioPlayer.onended = resolve;
             });
 
-            await new Promise(r => setTimeout(r, i === 0 ? 500 : 150));
+            await new Promise(r=>setTimeout(r, i===0?700:200));
 
-        } catch (e) {
+        }catch(e){
             console.log("Skip:", list[i]);
         }
     }
 
-    vPlayer.play(); // balik ke video
+    vPlayer.play();
 }
-        function playAntrian(kode, nomor, tipe) {
 
-            const angka = nomor.toString().padStart(2, '0').split('');
+/* 🔥 POLA SUARA */
+function playAntrian(kode, nomor, tipe){
 
-            let files = [
-                "/audio/bell.mp3",
-                "/audio/nomor.mp3",
-                "/audio/antrian.mp3",
-                `/audio/${kode}.mp3`,
-            ];
+    const angka = nomor.toString().padStart(2,'0').split('');
 
-            angka.forEach(a => {
-                files.push(`/audio/${a}.mp3`);
-            });
+    let files = [
+        "/audio/bell.mp3",
+        "/audio/antrian.mp3",
+        `/audio/${kode}.mp3`
+    ];
 
-            files = files.concat([
-                "/audio/silakan.mp3",
-                "/audio/menuju.mp3",
-                "/audio/ruang.mp3",
-                `/audio/${tipe.toLowerCase()}.mp3`
-            ]);
+    angka.forEach(a=>{
+        files.push(`/audio/${a}.mp3`);
+    });
 
-            playSequence(files);
-        }
+    files = files.concat([
+        "/audio/silakan.mp3",
+        "/audio/menuju.mp3",
+        "/audio/ruang.mp3",
+        `/audio/${tipe.toLowerCase()}.mp3`
+    ]);
 
-        /* CONTROL VIDEO */
-        let hideTimer;
+    playSequence(files);
+}
 
-        function showControls(){
-            const c = document.getElementById("videoControl");
-            c.style.opacity = 1;
-            clearTimeout(hideTimer);
-            hideTimer = setTimeout(()=>c.style.opacity=0,3000);
-        }
+/* FIREBASE */
+db.ref('panggilan_terbaru').on('value', (snapshot)=>{
+    const data = snapshot.val();
+    if(!data || data.nomor===0) return;
 
-        document.querySelector(".center-video")
-            .addEventListener("mousemove", showControls);
+    const key = data.tipe+"-"+data.nomor;
+    if(key===lastCall) return;
+    lastCall = key;
 
-        vPlayer.addEventListener("click", togglePlay);
+    const jam = new Date().getHours();
+    const kode = (data.tipe==='Umum')?(jam<12?"P":"S"):"N";
 
-        function togglePlay(){
-            const b = document.getElementById("btnPlay");
-            if(vPlayer.paused){
-                vPlayer.play();
-                b.innerText="⏸";
-            }else{
-                vPlayer.pause();
-                b.innerText="▶️";
-            }
-        }
+    const targetId = data.tipe==='Sunat'?'display-sunat':'display-umum';
 
-        function toggleMute(){
-            const b = document.getElementById("btnMute");
-            vPlayer.muted=!vPlayer.muted;
-            b.innerText = vPlayer.muted?"🔇":"🔊";
-        }
+    const el = document.getElementById(targetId);
+    el.innerText = `${kode}-${data.nomor.toString().padStart(2,'0')}`;
 
-        /* FIREBASE */
-        db.ref('panggilan_terbaru').on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (!data || data.nomor === 0) return;
+    el.classList.remove('blink');
+    void el.offsetWidth;
+    el.classList.add('blink');
 
-            const key = data.tipe + "-" + data.nomor;
-            if (key === lastCall) return;
-            lastCall = key;
-
-            const jam = new Date().getHours();
-            const kode = (data.tipe === 'Umum') ? (jam < 12 ? "P" : "S") : "N";
-
-            const targetId = data.tipe === 'Sunat'
-                ? 'display-sunat'
-                : 'display-umum';
-
-            const el = document.getElementById(targetId);
-            el.innerText = `${kode}-${data.nomor.toString().padStart(2, '0')}`;
-
-            el.classList.remove('blink');
-            void el.offsetWidth;
-            el.classList.add('blink');
-
-            if (suaraAktif) {
-                vPlayer.pause();
-                playAntrian(kode, data.nomor, data.tipe);
-            }
-        });
-    </script>
+    if(suaraAktif){
+        vPlayer.pause();
+        playAntrian(kode,data.nomor,data.tipe);
+    }
+});
+</script>
 
 </body>
 </html>
