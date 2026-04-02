@@ -91,25 +91,31 @@ document.addEventListener("DOMContentLoaded", ()=>{
 });
 
 /* 🔥 AUDIO FIX (ANTI MACET) */
-async function playSequence(list){
-    for(let i=0;i<list.length;i++){
-        try{
-            audioPlayer.src = list[i];
-            console.log("Play:", list[i]);
+function playAntrian(kode, nomor, tipe){
 
-            await audioPlayer.play();
+    const angka = nomor.toString().padStart(2,'0').split('');
 
-            await new Promise(res=>{
-                audioPlayer.onended = res;
-            });
+    let files = [
+        "/audio/bell.mp3",
+        "/audio/antrian.mp3",
+        `/audio/${kode}.mp3`
+    ];
 
-            await new Promise(r=>setTimeout(r, i===0?700:200));
+    // angka
+    angka.forEach(a=>{
+        files.push(`/audio/${a}.mp3`);
+    });
 
-        }catch(e){
-            console.log("Skip:", list[i]);
-        }
+    // 🔥 bagian akhir dipisah
+    files.push("/audio/silahkan.mp3");
+
+    if(tipe === "Umum"){
+        files.push("/audio/umum.mp3");
+    }else if(tipe === "Sunat"){
+        files.push("/audio/sunat.mp3");
     }
-    vPlayer.play();
+
+    playSequence(files);
 }
 
 /* 🔥 POLA SUARA */
