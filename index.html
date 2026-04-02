@@ -14,7 +14,7 @@
         .blink { animation: blinker 1s linear 3; }
         @keyframes blinker { 50% { opacity: 0; } }
 
-        .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; position:relative; }
+        .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; }
         video { height: 100%; width: 100%; object-fit: cover; }
 
         .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; border-left: 2px solid #ddd; }
@@ -32,7 +32,7 @@
     </style>
 </head>
 
-<body onclick="startMedia()">
+<body>
 
 <div class="sidebar-left">
     <div class="card">
@@ -80,16 +80,17 @@ const db = firebase.database();
 const vPlayer = document.getElementById('vPlayer');
 const audioPlayer = document.getElementById('audioPlayer');
 
-let suaraAktif = false;
 let lastCall = "";
 
-function startMedia(){
-    suaraAktif = true;
-    vPlayer.muted = false;
-    vPlayer.play();
-}
+/* 🔥 AUTO AKTIF TANPA KLIK */
+document.addEventListener("DOMContentLoaded", ()=>{
+    setTimeout(()=>{
+        vPlayer.muted = false;
+        vPlayer.play();
+    },1000);
+});
 
-/* 🔥 AUDIO FIX UNTUK TV */
+/* 🔥 AUDIO FIX (ANTI MACET) */
 async function playSequence(list){
     for(let i=0;i<list.length;i++){
         try{
@@ -98,8 +99,8 @@ async function playSequence(list){
 
             await audioPlayer.play();
 
-            await new Promise(resolve=>{
-                audioPlayer.onended = resolve;
+            await new Promise(res=>{
+                audioPlayer.onended = res;
             });
 
             await new Promise(r=>setTimeout(r, i===0?700:200));
@@ -108,7 +109,6 @@ async function playSequence(list){
             console.log("Skip:", list[i]);
         }
     }
-
     vPlayer.play();
 }
 
@@ -158,10 +158,8 @@ db.ref('panggilan_terbaru').on('value', (snapshot)=>{
     void el.offsetWidth;
     el.classList.add('blink');
 
-    if(suaraAktif){
-        vPlayer.pause();
-        playAntrian(kode,data.nomor,data.tipe);
-    }
+    vPlayer.pause();
+    playAntrian(kode,data.nomor,data.tipe);
 });
 </script>
 
