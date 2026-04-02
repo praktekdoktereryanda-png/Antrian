@@ -30,7 +30,7 @@
         .hari-tutup { color: #e74c3c; font-weight: bold; }
         .footer-name { font-weight: bold; color: #16a085; font-size: 1.2vw; margin: 10px 0; }
 
-        /* CONTROL */
+        /* CONTROL VIDEO (TAMBAHAN TANPA UBAH UI) */
         #videoControl {
             position:absolute;
             bottom:20px;
@@ -79,7 +79,7 @@
         <p class="footer-name">Rumah Sunat Dokter Yanda</p>
     </div>
 
-    <!-- AUDIO PLAYER -->
+    <!-- AUDIO -->
     <audio id="audioPlayer"></audio>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -106,18 +106,32 @@
             vPlayer.play();
         }
 
-        /* AUDIO SEQUENCE */
-        function playSequence(list, index = 0) {
-            if (index >= list.length) return;
+        /* AUDIO SEQUENCE FIX TOTAL */
+        function playSequence(list) {
+            let i = 0;
 
-            audioPlayer.src = list[index];
-            audioPlayer.play();
+            function next() {
+                if (i >= list.length) {
+                    vPlayer.play();
+                    return;
+                }
 
-            audioPlayer.onended = () => {
-                setTimeout(() => {
-                    playSequence(list, index + 1);
-                }, index === 0 ? 500 : 150);
-            };
+                audioPlayer.src = list[i];
+                console.log("Play:", list[i]);
+
+                audioPlayer.play().then(() => {
+                    audioPlayer.onended = () => {
+                        i++;
+                        setTimeout(next, i === 1 ? 500 : 150);
+                    };
+                }).catch(() => {
+                    console.log("Skip:", list[i]);
+                    i++;
+                    next();
+                });
+            }
+
+            next();
         }
 
         function playAntrian(kode, nomor, tipe) {
@@ -203,7 +217,6 @@
             if (suaraAktif) {
                 vPlayer.pause();
                 playAntrian(kode, data.nomor, data.tipe);
-                audioPlayer.onended = () => vPlayer.play();
             }
         });
     </script>
