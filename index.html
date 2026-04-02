@@ -30,7 +30,7 @@
         .hari-tutup { color: #e74c3c; font-weight: bold; }
         .footer-name { font-weight: bold; color: #16a085; font-size: 1.2vw; margin: 10px 0; }
 
-        /* TAMBAHAN KONTROL (TIDAK UBAH UI) */
+        /* CONTROL */
         #videoControl {
             position:absolute;
             bottom:20px;
@@ -57,12 +57,10 @@
     </div>
 
     <div class="center-video">
-        <!-- FIX AUTOPLAY TV -->
         <video id="vPlayer" autoplay muted playsinline>
             <source src="/video1.mp4" type="video/mp4">
         </video>
 
-        <!-- KONTROL DINAMIS -->
         <div id="videoControl">
             <button onclick="togglePlay()" id="btnPlay">⏸</button>
             <button onclick="toggleMute()" id="btnMute">🔊</button>
@@ -81,6 +79,9 @@
         <p class="footer-name">Rumah Sunat Dokter Yanda</p>
     </div>
 
+    <!-- AUDIO PLAYER -->
+    <audio id="audioPlayer"></audio>
+
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -93,43 +94,58 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        const videoFiles = ["/video1.mp4","/video2.mp4"];
-        let currentVideoIdx = 0;
-        let suaraAktif = false;
-
         const vPlayer = document.getElementById('vPlayer');
+        const audioPlayer = document.getElementById('audioPlayer');
 
-        /* FORCE PLAY (FIX TV) */
-        function forcePlay(){
-            let p = vPlayer.play();
-            if(p !== undefined){
-                p.catch(()=> setTimeout(()=>vPlayer.play(),1000));
-            }
-        }
+        let suaraAktif = false;
+        let lastCall = "";
 
         function startMedia() {
             suaraAktif = true;
             vPlayer.muted = false;
-            forcePlay();
+            vPlayer.play();
         }
 
-        window.addEventListener("load", forcePlay);
+        /* AUDIO SEQUENCE */
+        function playSequence(list, index = 0) {
+            if (index >= list.length) return;
 
-        /* LOOP VIDEO */
-        vPlayer.onended = () => {
-            currentVideoIdx = (currentVideoIdx+1)%videoFiles.length;
-            vPlayer.src = videoFiles[currentVideoIdx];
-            vPlayer.play();
-        };
+            audioPlayer.src = list[index];
+            audioPlayer.play();
 
-        /* FIX STUCK TV */
-        setInterval(()=>{
-            if(vPlayer.paused && !vPlayer.ended){
-                vPlayer.play();
-            }
-        },3000);
+            audioPlayer.onended = () => {
+                setTimeout(() => {
+                    playSequence(list, index + 1);
+                }, index === 0 ? 500 : 150);
+            };
+        }
 
-        /* CONTROL DINAMIS */
+        function playAntrian(kode, nomor, tipe) {
+
+            const angka = nomor.toString().padStart(2, '0').split('');
+
+            let files = [
+                "/audio/bell.mp3",
+                "/audio/nomor.mp3",
+                "/audio/antrian.mp3",
+                `/audio/${kode}.mp3`,
+            ];
+
+            angka.forEach(a => {
+                files.push(`/audio/${a}.mp3`);
+            });
+
+            files = files.concat([
+                "/audio/silakan.mp3",
+                "/audio/menuju.mp3",
+                "/audio/ruang.mp3",
+                `/audio/${tipe.toLowerCase()}.mp3`
+            ]);
+
+            playSequence(files);
+        }
+
+        /* CONTROL VIDEO */
         let hideTimer;
 
         function showControls(){
@@ -161,9 +177,35 @@
             b.innerText = vPlayer.muted?"🔇":"🔊";
         }
 
-        vPlayer.onplay = ()=> btnPlay.innerText="⏸";
-        vPlayer.onpause = ()=> btnPlay.innerText="▶️";
+        /* FIREBASE */
+        db.ref('panggilan_terbaru').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (!data || data.nomor === 0) return;
 
+            const key = data.tipe + "-" + data.nomor;
+            if (key === lastCall) return;
+            lastCall = key;
+
+            const jam = new Date().getHours();
+            const kode = (data.tipe === 'Umum') ? (jam < 12 ? "P" : "S") : "N";
+
+            const targetId = data.tipe === 'Sunat'
+                ? 'display-sunat'
+                : 'display-umum';
+
+            const el = document.getElementById(targetId);
+            el.innerText = `${kode}-${data.nomor.toString().padStart(2, '0')}`;
+
+            el.classList.remove('blink');
+            void el.offsetWidth;
+            el.classList.add('blink');
+
+            if (suaraAktif) {
+                vPlayer.pause();
+                playAntrian(kode, data.nomor, data.tipe);
+                audioPlayer.onended = () => vPlayer.play();
+            }
+        });
     </script>
 
 </body>
