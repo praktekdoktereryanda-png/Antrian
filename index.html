@@ -127,12 +127,12 @@ function playAntrian(kode, nomor, tipe){
         files.push(`/audio/${a}.mp3`);
     });
 
-    files = files.concat([
-        "/audio/silakan.mp3",
-        "/audio/menuju.mp3",
-        "/audio/ruang.mp3",
-        `/audio/${tipe.toLowerCase()}.mp3`
-    ]);
+    // 🔥 GANTI JADI 1 FILE FINAL
+    if(tipe === "Umum"){
+        files.push("/audio/silahkan_umum.mp3");
+    }else{
+        files.push("/audio/silahkan_sunat.mp3");
+    }
 
     playSequence(files);
 }
