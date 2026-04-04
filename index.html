@@ -4,183 +4,223 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Display Antrian - Backup Web</title>
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK (Compatibility Mode) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     
     <style>
+        * { box-sizing: border-box; }
         body {
             margin: 0;
             padding: 0;
-            font-family: 'Arial', sans-serif;
-            background-color: #121212;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212; /* Warna latar gelap sesuai Compose */
             color: white;
             overflow: hidden;
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            height: 100vh;
         }
 
-        /* Header */
+        /* Header sesuai AdminActivity */
         .header {
             background-color: #1976D2;
             padding: 20px;
             text-align: center;
-            font-size: 2.5rem;
+            font-size: 2rem;
             font-weight: bold;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
 
-        /* Area Utama */
-        .main-container {
+        /* Container Utama (Split Screen) */
+        .main-content {
             display: flex;
             flex: 1;
         }
 
-        /* Sisi Kiri (Nomor Antrian) */
-        .queue-section {
+        /* Sisi Kiri: Antrian (Data dari Firebase) */
+        .queue-container {
             flex: 2;
             display: flex;
             flex-direction: row;
         }
 
-        .card {
+        .queue-card {
             flex: 1;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            border-right: 2px solid #333;
+            border-right: 1px solid #333;
+            padding: 20px;
         }
 
-        .title { font-size: 3rem; color: #BBB; margin-bottom: 10px; }
-        .number { font-size: 15rem; font-weight: 900; margin: 0; }
-        .status { font-size: 1.5rem; color: #888; }
+        .label { font-size: 2.5rem; color: #FFFFFF; font-weight: bold; margin-bottom: 20px; }
+        .number { font-size: 13rem; font-weight: 900; line-height: 1; }
+        .status-text { font-size: 1.5rem; color: #888; margin-top: 20px; }
 
-        /* Sisi Kanan (Video/Media) */
-        .media-section {
-            flex: 1;
+        /* Sisi Kanan: Media (Video Promosi) */
+        .media-container {
+            flex: 1.2;
             background-color: #000;
             display: flex;
             justify-content: center;
             align-items: center;
-            border-left: 5px solid #1976D2;
+            border-left: 4px solid #1976D2;
         }
 
-        video { width: 100%; height: auto; }
+        #promoVideo { width: 100%; height: 100%; object-fit: cover; }
 
-        /* Warna Khusus */
-        #sunat-num { color: #FFEB3B; }
-        #umum-num { color: #00BCD4; }
+        /* Warna Sesuai Script Android */
+        #sunat-num { color: #FFEB3B; } /* Kuning */
+        #umum-num { color: #00BCD4; }  /* Cyan */
 
-        /* Notifikasi Panggilan */
+        /* Overlay Panggilan (Muncul saat is_calling = true) */
         #overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9);
-            display: none;
+            background: rgba(0,0,0,0.95);
+            display: none; /* Default tersembunyi */
             justify-content: center;
             align-items: center;
             flex-direction: column;
-            z-index: 100;
+            z-index: 999;
         }
-        .overlay-text { font-size: 5rem; text-align: center; color: white; }
+        .overlay-title { font-size: 4rem; color: white; margin-bottom: 20px; }
+        .overlay-number { font-size: 15rem; font-weight: bold; color: #FFEB3B; }
+        
+        /* Footer Running Text */
+        .footer {
+            background-color: #000;
+            padding: 10px;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        .marquee {
+            display: inline-block;
+            padding-left: 100%;
+            animation: marquee 20s linear infinite;
+            font-size: 1.5rem;
+            color: #FFEB3B;
+        }
+        @keyframes marquee {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(-100%, 0); }
+        }
     </style>
 </head>
 <body>
 
-    <div class="header">RUMAH SUNAT DR. YANDA</div>
+    <div class="header">DISPLAY ANTRIAN RUMAH SUNAT DR. YANDA</div>
 
-    <div class="main-container">
-        <div class="queue-section">
-            <!-- Sunat -->
-            <div class="card">
-                <div class="title">SUNAT</div>
+    <div class="main-content">
+        <!-- Sisi Kiri: Angka Antrian -->
+        <div class="queue-container">
+            <div class="queue-card">
+                <div class="label">ANTRIAN SUNAT</div>
                 <div id="sunat-num" class="number">N-00</div>
-                <div class="status">MENUJU RUANG PERIKSA</div>
+                <div class="status-text">SILAKAN MASUK</div>
             </div>
-            <!-- Umum -->
-            <div class="card">
-                <div class="title">UMUM</div>
+            <div class="queue-card">
+                <div class="label">ANTRIAN UMUM</div>
                 <div id="umum-num" class="number">P-00</div>
-                <div class="status">MENUJU RUANG PERIKSA</div>
+                <div class="status-text">SILAKAN MASUK</div>
             </div>
         </div>
 
-        <div class="media-section">
-            <video id="promoVideo" autoplay muted loop>
-                <source src="video-promo.mp4" type="video/mp4">
-                Browser Anda tidak mendukung video.
+        <!-- Sisi Kanan: Video Edukasi -->
+        <div class="media-container">
+            <video id="promoVideo" muted loop>
+                <source src="video_edukasi.mp4" type="video/mp4">
+                Browser tidak mendukung video.
             </video>
         </div>
     </div>
 
-    <!-- Overlay Panggilan Suara -->
+    <div class="footer">
+        <div class="marquee">Selamat Datang di Rumah Sunat dr. Yanda - Melayani Khitan Modern & Konsultasi Umum - Mohon menunggu antrian Anda dipanggil.</div>
+    </div>
+
+    <!-- Panggilan Popup -->
     <div id="overlay">
-        <div class="overlay-text">MOHON PERHATIAN</div>
-        <div id="panggilan-info" class="overlay-text" style="color: #FFEB3B;">N-01</div>
+        <div class="overlay-title">PANGGILAN ANTRIAN</div>
+        <div id="calling-num" class="overlay-number">N-01</div>
+        <div class="overlay-title">MENUJU RUANG PERIKSA</div>
     </div>
 
     <script>
-        // 1. KONFIGURASI FIREBASE (Salin dari Firebase Console Anda)
+        // 1. KONFIGURASI FIREBASE (GANTI DENGAN MILIK ANDA)
         const firebaseConfig = {
             apiKey: "AIzaSy...",
             authDomain: "antrianklinik2.firebaseapp.com",
-            databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app",
+            databaseURL: "https://antrianklinik2-default-rtdb.firebaseio.com",
             projectId: "antrianklinik2",
             storageBucket: "antrianklinik2.appspot.com",
             messagingSenderId: "...",
             appId: "..."
         };
 
+        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
         const video = document.getElementById('promoVideo');
         const overlay = document.getElementById('overlay');
+        const callingNumText = document.getElementById('calling-num');
 
-        // 2. MENDENGARKAN PERUBAHAN DATA (Sinkron dengan AdminActivity.kt)
+        // Pastikan video berputar saat user berinteraksi dengan halaman (Aturan Browser)
+        document.body.onclick = () => { video.play(); };
+
+        // 2. LISTEN DATA FIREBASE (SINKRON DENGAN ADMINACTIVITY.KT)
         db.ref('antrian').on('value', (snapshot) => {
             const data = snapshot.val();
             if (!data) return;
 
-            // Update Angka di Layar
-            const sNum = String(data.Sunat || 0).padStart(2, '0');
-            const uNum = String(data.Umum || 0).padStart(2, '0');
+            // Ambil Nomor & Update UI Utama
+            const sNum = (data.Sunat || 0).toString().padStart(2, '0');
+            const uNum = (data.Umum || 0).toString().padStart(2, '0');
             const kUmum = data.kode_umum || 'P';
 
             document.getElementById('sunat-num').innerText = `N-${sNum}`;
             document.getElementById('umum-num').innerText = `${kUmum}-${uNum}`;
 
-            // Logika Panggilan Suara (is_calling)
+            // 3. LOGIKA PANGGILAN (is_calling)
             if (data.is_calling === true) {
+                // Pause Video
                 video.pause();
-                overlay.style.display = 'flex';
                 
-                const nomorFull = data.tipe_panggil === 'SUNAT' ? `N-${sNum}` : `${kUmum}-${uNum}`;
-                document.getElementById('panggilan-info').innerText = nomorFull;
+                // Tampilkan Overlay Panggilan
+                overlay.style.display = 'flex';
+                const tipe = data.tipe_panggil || "";
+                const displayFull = (tipe === "SUNAT") ? `N-${sNum}` : `${kUmum}-${uNum}`;
+                callingNumText.innerText = displayFull;
 
-                // Suara Panggilan (Web Speech API)
-                panggilSuara(data.tipe_panggil, data.tipe_panggil === 'SUNAT' ? sNum : uNum, kUmum);
+                // Suara Panggilan (Text-To-Speech)
+                panggilSuara(tipe, sNum, uNum, kUmum);
             } else {
-                video.play();
+                // Sembunyikan Overlay & Lanjut Video
                 overlay.style.display = 'none';
+                video.play();
             }
         });
 
-        function panggilSuara(tipe, nomor, kode) {
-            const msg = new SpeechSynthesisUtterance();
-            const teksNomor = nomor.split('').join(' '); // Biar dibaca per angka (misal 0 1)
-            
-            if (tipe === 'SUNAT') {
-                msg.text = `Nomor antrian N, ${teksNomor}, Silahkan menuju ruang periksa sunat`;
-            } else {
-                msg.text = `Nomor antrian ${kode}, ${teksNomor}, Silahkan menuju ruang periksa umum`;
+        function panggilSuara(tipe, s, u, k) {
+            if ('speechSynthesis' in window) {
+                // Batalkan suara sebelumnya agar tidak tumpang tindih
+                window.speechSynthesis.cancel();
+
+                let text = "";
+                if (tipe === "SUNAT") {
+                    text = `Nomor antrian. N. ${s.split('').join(' ')}. Silakan menuju ruang periksa sunat.`;
+                } else {
+                    text = `Nomor antrian. ${k}. ${u.split('').join(' ')}. Silakan menuju ruang periksa umum.`;
+                }
+
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'id-ID';
+                utterance.rate = 0.8; // Sedikit pelan agar jelas
+                window.speechSynthesis.speak(utterance);
             }
-            
-            msg.lang = 'id-ID';
-            msg.rate = 0.8;
-            window.speechSynthesis.speak(msg);
         }
     </script>
 </body>
