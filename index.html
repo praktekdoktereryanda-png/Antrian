@@ -3,41 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <title>Display Antrian - Rumah Sunat Dokter Yanda</title>
-    
     <!-- Firebase SDK Legacy -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
-        /* UI ASLI (TIDAK BERUBAH) */
+        /* UI TETAP SAMA SESUAI PERMINTAAN */
         body { margin: 0; padding: 0; background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; width: 100vw; overflow: hidden; }
-        
         .sidebar-left { width: 30%; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 20px; background: #fff; border-right: 2px solid #ddd; }
-        
         .card { background: #fff; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #eee; border-top: 15px solid #f1c40f; }
         .card-umum { border-top: 15px solid #3498db; }
-        
         .card h2 { margin: 0; font-size: 2vw; color: #34495e; border-bottom: 5px solid #f1c40f; display: inline-block; text-transform: uppercase; }
         .card-umum h2 { border-bottom: 5px solid #3498db; }
-        
         .num { font-size: 8.5vw; font-weight: bold; margin: 5px 0; color: #2c3e50; transition: all 0.3s; }
-        
-        /* Efek Berkedip saat dipanggil */
         .blink { animation: blinker 1s linear infinite; transform: scale(1.1); color: #e74c3c !important; }
         @keyframes blinker { 50% { opacity: 0; } }
-        
         .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; border-left: 2px solid #ddd; border-right: 2px solid #ddd; position: relative; }
-        video { height: 100%; width: 100%; object-fit: contain; } /* 'contain' agar video tidak menutupi nomor */
-        
+        video { height: 100%; width: 100%; object-fit: contain; background: black; }
         .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; }
         .poster-container { width: 95%; aspect-ratio: 4 / 5; position: relative; overflow: hidden; border-radius: 15px; background: #000; box-shadow: 0 15px 35px rgba(0,0,0,0.2); }
         .poster-img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; opacity: 0; transition: opacity 1.5s ease-in-out; }
         .poster-img.active { opacity: 1; }
-        
         #clock { font-size: 3.5vw; font-weight: bold; color: #2c3e50; margin-top: auto; }
         .footer-name { font-weight: bold; color: #16a085; font-size: 1.2vw; margin: 10px 0; }
-
-        /* Overlay Awal (Browser Security) */
         #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; cursor: pointer; text-align: center; }
     </style>
 </head>
@@ -47,13 +35,13 @@
     <!-- Klik Layar Pertama Kali -->
     <div id="overlay">
         <h1>SISTEM ANTRIAN KLINIK</h1>
-        <p>Silakan Klik Layar atau Tekan OK pada Remote TV</p>
+        <p>KLIK LAYAR / TEKAN OK UNTUK MULAI VIDEO & SUARA</p>
     </div>
 
     <!-- Audio Bell -->
     <audio id="bellSound" src="audio/bell.mp3" preload="auto"></audio>
 
-    <!-- KIRI: Nomor Antrean -->
+    <!-- UI: Kolom Kiri -->
     <div class="sidebar-left">
         <div class="card">
             <h2>ANTRIAN SUNAT</h2>
@@ -65,12 +53,12 @@
         </div>
     </div>
 
-    <!-- TENGAH: Video Player -->
+    <!-- UI: Kolom Tengah (Video) -->
     <div class="center-video">
         <video id="vPlayer" playsinline muted></video>
     </div>
 
-    <!-- KANAN: Poster & Jam -->
+    <!-- UI: Kolom Kanan -->
     <div class="sidebar-right">
         <div class="poster-container" id="posterList"></div>
         <div id="clock">00:00:00</div>
@@ -78,9 +66,9 @@
     </div>
 
 <script>
-    // --- KONFIGURASI GITHUB & FIREBASE ---
-    const GITHUB_USER = "maidy"; 
-    const GITHUB_REPO = "AntrianKlinik2"; 
+    // --- KONFIGURASI GITHUB (Sesuai Screenshot Anda) ---
+    const GITHUB_USER = "praktekdokteryanda-png"; 
+    const GITHUB_REPO = "Antrian"; 
     const VIDEO_FOLDER = "videos"; 
 
     const firebaseConfig = {
@@ -95,53 +83,45 @@
     const bell = document.getElementById('bellSound');
     const sunatNum = document.getElementById('display-sunat');
     const umumNum = document.getElementById('display-umum');
-    const posterFiles = ["Poster1.jpg", "Poster2.jpg"]; 
+    const posterFiles = ["poster1.jpg", "poster2.jpg"]; // Huruf kecil sesuai standar
     
     let isStarted = false;
     let currentPosterIdx = 0;
     let videoFiles = [];
     let currentVideoIdx = 0;
 
-    // FUNGSI AKTIVASI (Wajib klik layar sekali)
+    // FUNGSI AKTIVASI
     function startDisplay() {
         if (isStarted) return;
         isStarted = true;
         document.getElementById('overlay').style.display = 'none';
         
         vPlayer.muted = false; // Buka suara video
+        vPlayer.volume = 0.6;
+        
         loadGithubVideos();
         initPosters();
     }
 
-    // 1. AUTO-SCAN PLAYLIST VIDEO DARI GITHUB
+    // 1. LOAD VIDEO (Direct Link ke video1.mp4)
     async function loadGithubVideos() {
-        try {
-            const res = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${VIDEO_FOLDER}`);
-            const data = await res.json();
-            
-            // Ambil semua file .mp4
-            videoFiles = data
-                .filter(f => f.name.toLowerCase().endsWith('.mp4'))
-                .map(f => f.download_url);
-
-            if(videoFiles.length > 0) {
-                playPlaylist(0);
-            } else {
-                // Cadangan jika folder kosong
-                videoFiles = [`https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/videos/video1.mp4`];
-                playPlaylist(0);
-            }
-        } catch (e) { 
-            console.error("Gagal load video folder, mencoba manual...");
-            videoFiles = [`https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/videos/video1.mp4`];
-            playPlaylist(0);
-        }
+        // Daftar file video manual agar aman meskipun Repo Private
+        videoFiles = [
+            `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${VIDEO_FOLDER}/video1.mp4`
+        ];
+        
+        console.log("Memuat video dari:", videoFiles[0]);
+        playPlaylist(0);
     }
 
     function playPlaylist(index) {
+        if (!videoFiles[index]) return;
         vPlayer.src = videoFiles[index];
-        vPlayer.play().catch(e => console.log("Menunggu interaksi user..."));
+        vPlayer.load();
+        vPlayer.play().catch(e => console.log("Playback error, butuh klik layar."));
+        
         vPlayer.onended = () => {
+            // Putar terus menerus (Looping)
             currentVideoIdx = (currentVideoIdx + 1) % videoFiles.length;
             playPlaylist(currentVideoIdx);
         };
@@ -171,7 +151,7 @@
         document.getElementById("clock").innerText = new Date().toLocaleTimeString("id-ID");
     }, 1000);
 
-    // 3. LOGIKA SINKRONISASI FIREBASE
+    // 3. SINKRONISASI FIREBASE
     db.ref('antrian').on('value', (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
@@ -188,31 +168,29 @@
         umumNum.innerText = `${kUmum}-${uVal}`;
 
         if (data.is_calling === true) {
-            vPlayer.pause(); // VIDEO OTOMATIS BERHENTI
+            vPlayer.pause(); // Video berhenti saat ada panggil
 
             const targetId = (data.tipe_panggil === "SUNAT") ? sunatNum : umumNum;
             sunatNum.classList.remove('blink');
             umumNum.classList.remove('blink');
             targetId.classList.add('blink');
 
-            // Jalankan Bell + Suara Orang
             panggilSuara(data.tipe_panggil, sVal, uVal, kUmum);
         } else {
             sunatNum.classList.remove('blink');
             umumNum.classList.remove('blink');
-            if (isStarted) vPlayer.play(); // VIDEO LANJUT LAGI
+            if (isStarted) vPlayer.play(); // Video lanjut
         }
     });
 
-    // 4. LOGIKA SUARA (BELL DULU BARU TTS)
+    // 4. SUARA (BELL + TTS)
     function panggilSuara(tipe, s, u, k) {
         window.speechSynthesis.cancel();
         bell.pause();
         bell.currentTime = 0;
 
-        // Putar Bell "Ding-Dong"
         bell.play().then(() => {
-            // Tunggu 2.5 detik (durasi bell) baru suara orang muncul
+            // Tunggu 2.5 detik agar ding-dong selesai
             setTimeout(() => {
                 let teks = (tipe === "SUNAT") ? 
                     `Nomor antrian, N, ${s.split('').join(' ')}, Silahkan menuju ruang periksa sunat` :
@@ -222,8 +200,8 @@
                 msg.lang = 'id-ID';
                 msg.rate = 0.8;
                 window.speechSynthesis.speak(msg);
-            }, 2500);
-        }).catch(e => console.log("Audio diblokir browser, silakan klik layar!"));
+            }, 2500); 
+        }).catch(e => console.log("Audio diblokir browser"));
     }
 </script>
 </body>
