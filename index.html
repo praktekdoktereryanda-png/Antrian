@@ -2,72 +2,74 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Sistem Antrian Klinik - Rumah Sunat Dokter Yanda</title>
-    <!-- Firebase SDK Legacy (Kompatibel dengan Script) -->
+    <title>Display Antrian - Rumah Sunat Dokter Yanda</title>
+    <!-- Firebase SDK Legacy -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
         body { margin: 0; padding: 0; background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; width: 100vw; overflow: hidden; }
-        .sidebar-left { width: 30%; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 20px; background: #fff; border-right: 2px solid #ddd; }
-        .card { background: #fff; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #eee; }
-        .card h2 { margin: 0; font-size: 2vw; color: #34495e; border-bottom: 5px solid #f1c40f; display: inline-block; text-transform: uppercase; }
-        .num { font-size: 8.5vw; font-weight: bold; margin: 5px 0; color: #2c3e50; }
         
-        .blink { animation: blinker 1s linear infinite; }
+        /* Layout Sidebar Kiri (Nomor Antrian) */
+        .sidebar-left { width: 30%; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 20px; background: #fff; border-right: 2px solid #ddd; }
+        .card { background: #fff; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #eee; transition: all 0.3s; }
+        .card h2 { margin: 0; font-size: 2vw; color: #34495e; border-bottom: 5px solid #f1c40f; display: inline-block; text-transform: uppercase; }
+        .num { font-size: 8.5vw; font-weight: bold; margin: 5px 0; color: #2c3e50; transition: transform 0.3s; }
+
+        /* Efek Berkedip saat dipanggil */
+        .blink { animation: blinker 1s linear infinite; transform: scale(1.1); }
         @keyframes blinker { 50% { opacity: 0; } }
 
-        .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; }
+        /* Video Tengah */
+        .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; border-left: 2px solid #ddd; border-right: 2px solid #ddd; }
         video { height: 100%; width: 100%; object-fit: cover; }
 
-        .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; border-left: 2px solid #ddd; }
-        .poster-container { width: 95%; aspect-ratio: 4 / 5; position: relative; overflow: hidden; border-radius: 15px; background: #000; box-shadow: 0 15px 35px rgba(0,0,0,0.2); margin-bottom: 10px; }
+        /* Sidebar Kanan (Poster & Jam) */
+        .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; }
+        .poster-container { width: 95%; aspect-ratio: 4 / 5; position: relative; overflow: hidden; border-radius: 15px; background: #000; box-shadow: 0 15px 35px rgba(0,0,0,0.2); }
         .poster-img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; opacity: 0; transition: opacity 1.5s ease-in-out; }
         .poster-img.active { opacity: 1; }
 
         #clock { font-size: 3.5vw; font-weight: bold; color: #2c3e50; margin-top: auto; }
-        .jadwal-box { background: #f9f9f9; border: 2px solid #e0e0e0; border-radius: 10px; padding: 10px; width: 90%; text-align: center; margin-top: 5px; }
-        .jadwal-title { font-weight: bold; color: #e67e22; border-bottom: 1px solid #ddd; margin-bottom: 5px; font-size: 1.1vw; }
-        .jadwal-item { font-size: 1vw; color: #555; margin: 2px 0; }
-        .hari-tutup { color: #e74c3c; font-weight: bold; }
         .footer-name { font-weight: bold; color: #16a085; font-size: 1.2vw; margin: 10px 0; }
     </style>
 </head>
 
-<body onclick="enableMedia()">
+<body onclick="startDisplay()">
 
 <div class="sidebar-left">
-    <div class="card">
+    <!-- Card Sunat -->
+    <div class="card" id="card-sunat">
         <h2>ANTRIAN SUNAT</h2>
         <div class="num" id="display-sunat">N-00</div>
     </div>
 
-    <div class="card" style="border-top: 10px solid #3498db;">
+    <!-- Card Umum -->
+    <div class="card" id="card-umum" style="border-top: 10px solid #3498db;">
         <h2 id="label-umum">PRAKTEK UMUM</h2>
         <div class="num" id="display-umum" style="color: #3498db;">P-00</div>
     </div>
 </div>
 
 <div class="center-video">
+    <!-- Video Player -->
     <video id="vPlayer" loop muted playsinline>
         <source src="video1.mp4" type="video/mp4">
     </video>
 </div>
 
 <div class="sidebar-right">
+    <!-- Slideshow Poster -->
     <div class="poster-container" id="posterList"></div>
+    
+    <!-- Jam Digital -->
     <div id="clock">00:00:00</div>
-    <div class="jadwal-box">
-        <div class="jadwal-title">JADWAL PRAKTEK</div>
-        <div class="jadwal-item"><b>Pagi:</b> 06:00 - 09:00</div>
-        <div class="jadwal-item"><b>Sore:</b> 16:00 - 20:00</div>
-        <div class="jadwal-item hari-tutup">Minggu & Hari Besar: TUTUP</div>
-    </div>
+
     <p class="footer-name">Rumah Sunat Dokter Yanda</p>
 </div>
 
 <script>
-    // 1. KONFIGURASI FIREBASE
+    // 1. KONFIGURASI FIREBASE (Sesuai Android Anda)
     const firebaseConfig = {
         apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
         databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app"
@@ -77,22 +79,23 @@
     const db = firebase.database();
 
     const vPlayer = document.getElementById('vPlayer');
-    const sunatEl = document.getElementById('display-sunat');
-    const umumEl = document.getElementById('display-umum');
-
-    let isMediaEnabled = false;
-    const posterFiles = ["Poster1.jpg", "Poster2.jpg"]; 
+    const sunatNum = document.getElementById('display-sunat');
+    const umumNum = document.getElementById('display-umum');
+    const posterFiles = ["Poster1.jpg", "Poster2.jpg", "Poster3.jpg"];
+    
+    let isStarted = false;
     let currentPosterIdx = 0;
 
-    // Klik layar sekali untuk izinkan suara (Aturan Browser)
-    function enableMedia() {
-        if (isMediaEnabled) return;
-        isMediaEnabled = true;
+    // Aktifkan Media (Wajib Klik Sekali di Browser)
+    function startDisplay() {
+        if (isStarted) return;
+        isStarted = true;
         vPlayer.play();
-        startPoster();
+        initPosters();
     }
 
-    function startPoster() {
+    // Slideshow Poster
+    function initPosters() {
         const container = document.getElementById('posterList');
         posterFiles.forEach((file, i) => {
             const img = document.createElement('img');
@@ -100,6 +103,7 @@
             img.className = "poster-img" + (i === 0 ? " active" : "");
             container.appendChild(img);
         });
+
         setInterval(() => {
             const posters = document.querySelectorAll('.poster-img');
             posters[currentPosterIdx].classList.remove('active');
@@ -113,54 +117,66 @@
         document.getElementById("clock").innerText = new Date().toLocaleTimeString("id-ID");
     }, 1000);
 
-    // 2. LOGIKA SINKRONISASI FIREBASE
-    db.ref('antrian').on('value', (snap) => {
-        const data = snap.val();
+    // ==========================================
+    // LOGIKA FIREBASE (Sinkron dengan Android)
+    // ==========================================
+    db.ref('antrian').on('value', (snapshot) => {
+        const data = snapshot.val();
         if (!data) return;
 
-        // Ambil Data Nomor
-        const sNum = (data.Sunat || 0).toString().padStart(2, '0');
-        const uNum = (data.Umum || 0).toString().padStart(2, '0');
-        const kodeU = data.kode_umum || "P";
+        // 1. Update Nomor Utama
+        const sVal = (data.Sunat || 0).toString().padStart(2, '0');
+        const uVal = (data.Umum || 0).toString().padStart(2, '0');
+        const kUmum = data.kode_umum || 'P';
 
-        sunatEl.innerText = `N-${sNum}`;
-        umumEl.innerText = `${kodeU}-${uNum}`;
+        sunatNum.innerText = `N-${sVal}`;
+        umumNum.innerText = `${kUmum}-${uVal}`;
 
-        // Cek Trigger Panggilan
+        // 2. Logika Panggilan (is_calling)
         if (data.is_calling === true) {
-            vPlayer.pause(); // Stop video sementara
-            
-            // Efek Blink
-            const targetEl = (data.tipe_panggil === "SUNAT") ? sunatEl : umumEl;
-            sunatEl.classList.remove('blink');
-            umumEl.classList.remove('blink');
-            targetEl.classList.add('blink');
+            // Berhenti Video
+            vPlayer.pause();
 
-            // Suara
-            speak(data.tipe_panggil, sNum, uNum, kodeU);
+            // Efek Blink pada nomor yang sedang dipanggil
+            if (data.tipe_panggil === "SUNAT") {
+                sunatNum.classList.add('blink');
+                umumNum.classList.remove('blink');
+            } else {
+                umumNum.classList.add('blink');
+                sunatNum.classList.remove('blink');
+            }
+
+            // Suara Panggilan (Panggil TTS)
+            panggilSuara(data.tipe_panggil, sVal, uVal, kUmum);
+
         } else {
-            sunatEl.classList.remove('blink');
-            umumEl.classList.remove('blink');
-            if(isMediaEnabled) vPlayer.play(); // Lanjut video
+            // Berhenti Panggil (Reset UI & Lanjut Video)
+            sunatNum.classList.remove('blink');
+            umumNum.classList.remove('blink');
+            if (isStarted) vPlayer.play();
         }
     });
 
-    function speak(tipe, s, u, k) {
+    // Fungsi Suara (Text-to-Speech)
+    function panggilSuara(tipe, s, u, k) {
         if (!window.speechSynthesis) return;
-        window.speechSynthesis.cancel(); // Reset suara sebelumnya
         
-        let text = "";
+        // Batalkan suara sebelumnya agar tidak tumpang tindih
+        window.speechSynthesis.cancel();
+
+        let teks = "";
         if (tipe === "SUNAT") {
-            text = `Nomor antrian, N, ${s.split('').join(' ')}, Silahkan menuju ruang periksa sunat`;
+            teks = `Nomor antrian, N, ${s.split('').join(' ')}, Silahkan menuju ruang periksa sunat`;
         } else {
-            text = `Nomor antrian, ${k}, ${u.split('').join(' ')}, Silahkan menuju ruang periksa umum`;
+            teks = `Nomor antrian, ${k}, ${u.split('').join(' ')}, Silahkan menuju ruang periksa umum`;
         }
 
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = 'id-ID';
-        utter.rate = 0.8;
-        window.speechSynthesis.speak(utter);
+        const msg = new SpeechSynthesisUtterance(teks);
+        msg.lang = 'id-ID';
+        msg.rate = 0.8; // Kecepatan bicara
+        window.speechSynthesis.speak(msg);
     }
 </script>
+
 </body>
 </html>
