@@ -8,68 +8,68 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
-        body { margin: 0; padding: 0; background: #f4f7f6; display: flex; height: 100vh; overflow: hidden; font-family: sans-serif; }
+        body { margin: 0; padding: 0; background: #f4f7f6; display: flex; height: 100vh; overflow: hidden; font-family: 'Segoe UI', Roboto, sans-serif; }
         
-        /* Sidebar Kiri */
-        .sidebar-left { width: 30%; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 20px; background: #fff; border-right: 2px solid #ddd; }
-        .card { background: #fff; border-radius: 20px; padding: 30px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-top: 15px solid #f1c40f; }
+        /* Sidebar Kiri - Nomor Antrian */
+        .sidebar-left { width: 35%; display: flex; flex-direction: column; justify-content: center; gap: 30px; padding: 30px; background: #fff; border-right: 3px solid #ddd; }
+        .card { background: #fff; border-radius: 25px; padding: 40px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.1); border-top: 20px solid #f1c40f; transition: 0.3s; }
         .card-umum { border-top-color: #3498db; }
-        .num { font-size: 8vw; font-weight: bold; color: #2c3e50; margin: 10px 0; }
-        .blink { animation: blinker 1s linear infinite; color: #e74c3c !important; }
-        @keyframes blinker { 50% { opacity: 0; } }
+        .num { font-size: 10vw; font-weight: 900; color: #2c3e50; margin: 10px 0; line-height: 1; }
+        
+        /* Animasi Berkedip saat Dipanggil */
+        .blink { animation: blinker 0.8s linear infinite; color: #e74c3c !important; transform: scale(1.05); }
+        @keyframes blinker { 50% { opacity: 0.2; } }
 
-        /* TENGAH: Video Player (FULLSCREEN NO BLACK BORDERS) */
-        .center-video { width: 40%; background: #000; display: flex; overflow: hidden; position: relative; }
+        /* TENGAH: Video Player (Cover Area) */
+        .center-video { width: 35%; background: #000; display: flex; overflow: hidden; position: relative; }
         video { width: 100%; height: 100%; object-fit: cover; background: black; }
 
-        /* Sidebar Kanan */
-        .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; border-left: 2px solid #ddd; }
-        .poster-container { width: 100%; height: 70vh; position: relative; overflow: hidden; border-radius: 15px; background: #000; }
-        .poster-img { width: 100%; height: 100%; object-fit: cover; position: absolute; display: none; }
-        .poster-img.active { display: block; }
+        /* Sidebar Kanan - Poster & Info */
+        .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; border-left: 3px solid #ddd; }
+        .poster-container { width: 100%; height: 65vh; position: relative; overflow: hidden; border-radius: 20px; background: #000; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); }
+        .poster-img { width: 100%; height: 100%; object-fit: cover; position: absolute; opacity: 0; transition: opacity 1s; }
+        .poster-img.active { opacity: 1; }
         
-        #clock { font-size: 3.5vw; font-weight: bold; color: #2c3e50; margin-top: auto; }
-        #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; cursor: pointer; text-align: center; }
+        #clock { font-size: 4vw; font-weight: bold; color: #2c3e50; margin-top: auto; letter-spacing: 2px; }
+        #overlay { position: fixed; inset: 0; background: rgba(44, 62, 80, 0.98); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; cursor: pointer; text-align: center; }
     </style>
 </head>
 <body onclick="startDisplay()">
 
     <div id="overlay">
-        <h1>UNIT DISPLAY TV</h1>
-        <p>KLIK LAYAR UNTUK AKTIFKAN SUARA & PLAYLIST VIDEO</p>
+        <h1 style="font-size: 4vw;">UNIT DISPLAY TV</h1>
+        <p style="font-size: 1.5vw; opacity: 0.8;">KLIK DI MANA SAJA UNTUK AKTIFKAN SUARA & VIDEO</p>
     </div>
     
+    <!-- Sound Bell (Pastikan file ada di folder audio/) -->
     <audio id="bell" src="audio/bell.mp3"></audio>
 
     <div class="sidebar-left">
-        <div class="card">
-            <h2 style="color:#f39c12; margin:0;">SUNAT</h2>
+        <div class="card" id="cardSunat">
+            <h2 style="color:#f39c12; margin:0; font-size: 2vw;">ANTRIAN SUNAT</h2>
             <div class="num" id="sunatNum">N-00</div>
         </div>
-        <div class="card card-umum">
-            <h2 style="color:#2980b9; margin:0;">UMUM</h2>
+        <div class="card card-umum" id="cardUmum">
+            <h2 style="color:#2980b9; margin:0; font-size: 2vw;">PRAKTEK UMUM</h2>
             <div class="num" id="umumNum">P-00</div>
         </div>
     </div>
 
     <div class="center-video">
-        <video id="vPlayer" muted></video>
+        <video id="vPlayer" loop muted></video>
     </div>
 
     <div class="sidebar-right">
         <div class="poster-container" id="posterList">
+            <!-- Ganti dengan URL poster asli Anda -->
             <img src="poster/poster1.jpg" class="poster-img active">
             <img src="poster/poster2.jpg" class="poster-img">
         </div>
         <div id="clock">00:00:00</div>
-        <p style="font-weight: bold; color: #7f8c8d; margin-top:10px;">Rumah Sunat Dokter Yanda</p>
+        <p style="font-weight: bold; color: #16a085; font-size: 1.2vw; margin: 15px 0;">Rumah Sunat Dokter Yanda</p>
     </div>
 
 <script>
-    // --- CONFIG GITHUB ---
-    const GITHUB_USER = "praktekdoktereryanda-png"; 
-    const GITHUB_REPO = "Antrian"; 
-
     const firebaseConfig = {
         apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
         databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app"
@@ -83,72 +83,65 @@
     const umumNum = document.getElementById('umumNum');
     let isStarted = false;
 
-    // SINKRONISASI DATA DENGAN REMOTE/ADMIN
+    // SINKRONISASI DATA DENGAN FIREBASE
     db.ref('antrian').on('value', (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
 
-        const jam = new Date().getHours();
-        const autoKode = jam < 12 ? "P" : "S";
-        
+        // Ambil data nomor dan kode dari database
         const sVal = (data.nomor_dipanggil?.Sunat || 0).toString().padStart(2, '0');
         const uVal = (data.nomor_dipanggil?.Umum || 0).toString().padStart(2, '0');
+        const kodeUmum = data.nomor_dipanggil?.kode_umum || "P";
 
         sunatNum.innerText = `N-${sVal}`;
-        umumNum.innerText = `${autoKode}-${uVal}`;
+        umumNum.innerText = `${kodeUmum}-${uVal}`;
 
+        // Cek jika ada panggilan aktif
         if (data.is_calling === true) {
             vPlayer.pause();
-            const target = (data.tipe_panggil === "SUNAT") ? sunatNum : umumNum;
+            const isSunat = (data.tipe_panggil === "SUNAT");
+            const target = isSunat ? sunatNum : umumNum;
+            
+            // Reset blink
             sunatNum.classList.remove('blink');
             umumNum.classList.remove('blink');
+            
+            // Aktifkan blink pada yang dipanggil
             target.classList.add('blink');
             
-            panggilSuara(data.tipe_panggil, (data.tipe_panggil === "SUNAT" ? sVal : uVal), autoKode);
+            panggilSuara(data.tipe_panggil, (isSunat ? sVal : uVal), (isSunat ? "N" : kodeUmum));
         } else {
             sunatNum.classList.remove('blink');
             umumNum.classList.remove('blink');
-            if (isStarted) vPlayer.play().catch(() => {});
+            if (isStarted) vPlayer.play().catch(e => console.log("Video Play Blocked"));
         }
     });
 
     function panggilSuara(tipe, nomor, kode) {
+        // Hentikan suara sebelumnya
         window.speechSynthesis.cancel();
+        
+        // Putar bel
         bell.currentTime = 0;
         bell.play().then(() => {
+            // Setelah bel selesai (sekitar 2.5 detik), mulai suara manusia
             setTimeout(() => {
-                let teks = (tipe === "SUNAT") ? 
-                    `Nomor antrian, N, ${nomor}, silahkan menuju ruang periksa sunat` :
-                    `Nomor antrian, ${kode}, ${nomor}, silahkan menuju ruang periksa umum`;
+                let ruang = (tipe === "SUNAT") ? "ruang periksa sunat" : "ruang periksa umum";
+                let teks = `Nomor antrian. ${kode}. ${parseInt(nomor)}. Silakan menuju ${ruang}.`;
+                
                 const msg = new SpeechSynthesisUtterance(teks);
                 msg.lang = 'id-ID';
-                msg.rate = 0.9;
+                msg.rate = 0.85; // Sedikit lebih lambat agar jelas
+                msg.pitch = 1.1;
+                
+                msg.onend = () => {
+                    // Setelah bicara selesai, matikan is_calling agar berhenti berkedip
+                    db.ref('antrian/is_calling').set(false);
+                };
+                
                 window.speechSynthesis.speak(msg);
             }, 2500);
-        });
-    }
-
-    // --- AUTO SCAN GITHUB PLAYLIST ---
-    async function fetchPlaylist() {
-        try {
-            const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/videos`;
-            const res = await fetch(apiUrl);
-            const files = await res.json();
-            if (Array.isArray(files)) {
-                const videoUrls = files
-                    .filter(f => f.name.toLowerCase().endsWith('.mp4'))
-                    .map(f => f.download_url);
-                if (videoUrls.length > 0) playVideoList(videoUrls, 0);
-            }
-        } catch (e) { console.error("Gagal scan GitHub:", e); }
-    }
-
-    function playVideoList(list, index) {
-        if (index >= list.length) index = 0;
-        vPlayer.src = list[index];
-        vPlayer.load();
-        vPlayer.play().catch(() => {});
-        vPlayer.onended = () => playVideoList(list, index + 1);
+        }).catch(e => console.log("Audio play failed, click screen first."));
     }
 
     function startDisplay() {
@@ -156,9 +149,11 @@
         isStarted = true;
         document.getElementById('overlay').style.display = 'none';
         vPlayer.muted = false;
-        fetchPlaylist(); // Muat playlist video
         
-        // Loop Poster Samping
+        // Putar Video (Anda bisa menambahkan fetchPlaylist GitHub di sini seperti sebelumnya)
+        vPlayer.play().catch(e => {});
+
+        // Loop Poster Samping (8 Detik)
         const posters = document.querySelectorAll('.poster-img');
         let pIdx = 0;
         setInterval(() => {
@@ -169,7 +164,7 @@
 
         // Jam Digital
         setInterval(() => {
-            document.getElementById("clock").innerText = new Date().toLocaleTimeString("id-ID");
+            document.getElementById("clock").innerText = new Date().toLocaleTimeString("id-ID", {hour12: false});
         }, 1000);
     }
 </script>
