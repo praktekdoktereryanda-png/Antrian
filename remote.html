@@ -1,109 +1,62 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Remote Admin - Rumah Sunat Dr. Yanda</title>
+    <title>Remote Admin</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
-        .container { max-width: 600px; margin: auto; }
-        .status-box { background: #fff; padding: 15px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-left: 5px solid #e74c3c; }
-        .btn-stop { background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab-btn { flex: 1; padding: 15px; border: none; background: #ddd; cursor: pointer; font-weight: bold; border-radius: 5px; }
-        .tab-btn.active { background: #3498db; color: white; }
-        .queue-list { background: white; border-radius: 10px; padding: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .queue-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; }
-        .no-antrian { font-size: 1.5rem; font-weight: bold; color: #2c3e50; }
-        .btn-call { background: #2ecc71; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; }
+        body { font-family: sans-serif; padding: 20px; background: #f4f7f6; }
+        .card { background: white; padding: 15px; margin: 10px 0; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .btn-panggil { background: #2ecc71; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
+    <h2>PANGGIL ANTRIAN</h2>
+    <div id="list-antrian">Memuat...</div>
 
-<div class="container">
-    <h1 style="text-align:center;">REMOTE ADMIN</h1>
+    <script>
+        const firebaseConfig = { databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-    <!-- Notif Panggilan -->
-    <div id="calling-status" class="status-box" style="display: none;">
-        <span>🔔 TV sedang memanggil...</span>
-        <button class="btn-stop" onclick="stopCalling()">MATIKAN BELL</button>
-    </div>
-
-    <!-- Pilihan Layanan -->
-    <div class="tabs">
-        <button id="tab-sunat" class="tab-btn active" onclick="switchTab('sunat')">SUNAT (N)</button>
-        <button id="tab-umum" class="tab-btn" onclick="switchTab('umum')">UMUM (P/S)</button>
-    </div>
-
-    <div id="list-container" class="queue-list">
-        <div style="text-align:center; padding:20px; color:#95a5a6;">Memuat data...</div>
-    </div>
-</div>
-
-<script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
-        databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    let currentTab = 'sunat';
-
-    db.ref('antrian/is_calling').on('value', (snap) => {
-        document.getElementById('calling-status').style.display = snap.val() ? 'flex' : 'none';
-    });
-
-    function switchTab(tab) {
-        currentTab = tab;
-        document.getElementById('tab-sunat').classList.toggle('active', tab === 'sunat');
-        document.getElementById('tab-umum').classList.toggle('active', tab === 'umum');
-        loadQueue();
-    }
-
-    function loadQueue() {
-        const path = currentTab === 'sunat' ? 'antrian_list/sunat' : 'antrian_list/umum';
-        db.ref(path).on('value', (snap) => {
-            const container = document.getElementById('list-container');
-            container.innerHTML = '';
-            let hasData = false;
-
-            snap.forEach((child) => {
-                const data = child.val();
-                if (data.status === 'menunggu') {
-                    hasData = true;
-                    const kodeDisplay = currentTab === 'sunat' ? 'N' : data.kode;
-                    const formatted = `${kodeDisplay}-${String(data.nomor).padStart(2, '0')}`;
-                    
-                    const div = document.createElement('div');
-                    div.className = 'queue-item';
-                    div.innerHTML = `
-                        <div class="no-antrian">${formatted}</div>
-                        <button class="btn-call" onclick="panggil(${data.nomor}, '${data.kode || ''}')">📢 PANGGIL</button>
-                    `;
-                    container.appendChild(div);
-                }
+        // Gabungkan list sunat dan umum untuk dipantau admin
+        function loadList() {
+            db.ref('antrian_list').on('value', (snapshot) => {
+                const listDiv = document.getElementById('list-antrian');
+                listDiv.innerHTML = "";
+                
+                snapshot.forEach((category) => {
+                    category.forEach((item) => {
+                        const data = item.val();
+                        if (data.status === "menunggu") {
+                            const div = document.createElement('div');
+                            div.className = 'card';
+                            div.innerHTML = `
+                                <b>${data.kode}-${data.nomor.toString().padStart(2, '0')} (${category.key.toUpperCase()})</b>
+                                <button class="btn-panggil" onclick="panggil('${category.key}', '${item.key}', ${data.nomor}, '${data.kode}')">PANGGIL</button>
+                            `;
+                            listDiv.appendChild(div);
+                        }
+                    });
+                });
             });
-            if (!hasData) container.innerHTML = '<div style="text-align:center; padding:20px;">Daftar kosong.</div>';
-        });
-    }
+        }
 
-    function panggil(nomor, kode) {
-        const tipe = currentTab === 'sunat' ? 'SUNAT' : 'UMUM';
-        const updates = {};
-        updates['antrian/is_calling'] = true;
-        updates['antrian/tipe_panggil'] = tipe;
-        updates[`antrian/nomor_dipanggil/${currentTab === 'sunat' ? 'Sunat' : 'Umum'}`] = nomor;
-        if (kode) updates['antrian/kode_umum'] = kode;
-        db.ref().update(updates);
-    }
+        function panggil(tipe, key, nomor, kode) {
+            const label = (tipe === 'sunat') ? 'Sunat' : 'Umum';
+            const updates = {};
+            // 1. Update status agar hilang dari daftar tunggu
+            updates[`antrian_list/${tipe}/${key}/status`] = "dipanggil";
+            // 2. Kirim ke TV
+            updates[`antrian/nomor_dipanggil/${label}`] = nomor;
+            updates[`antrian/tipe_panggil`] = tipe.toUpperCase();
+            updates[`antrian/kode_umum`] = kode;
+            updates[`antrian/is_calling`] = true;
 
-    function stopCalling() {
-        db.ref('antrian/is_calling').set(false);
-    }
+            db.ref().update(updates);
+        }
 
-    loadQueue();
-</script>
+        loadList();
+    </script>
 </body>
 </html>
