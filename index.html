@@ -3,44 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <title>Display Antrian - Rumah Sunat Dokter Yanda</title>
+    
     <!-- Firebase SDK Legacy -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
-        /* UI TETAP SAMA SESUAI PERMINTAAN */
+        /* UI ASLI - TIDAK BERUBAH */
         body { margin: 0; padding: 0; background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; width: 100vw; overflow: hidden; }
+        
         .sidebar-left { width: 30%; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 20px; background: #fff; border-right: 2px solid #ddd; }
+        
         .card { background: #fff; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #eee; border-top: 15px solid #f1c40f; }
         .card-umum { border-top: 15px solid #3498db; }
+        
         .card h2 { margin: 0; font-size: 2vw; color: #34495e; border-bottom: 5px solid #f1c40f; display: inline-block; text-transform: uppercase; }
         .card-umum h2 { border-bottom: 5px solid #3498db; }
-        .num { font-size: 8.5vw; font-weight: bold; margin: 5px 0; color: #2c3e50; transition: all 0.3s; }
+        
+        .num { font-size: 8.5vw; font-weight: bold; margin: 5px 0; color: #2c3e50; }
+        
+        /* Efek Berkedip saat dipanggil */
         .blink { animation: blinker 1s linear infinite; transform: scale(1.1); color: #e74c3c !important; }
         @keyframes blinker { 50% { opacity: 0; } }
-        .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; border-left: 2px solid #ddd; border-right: 2px solid #ddd; position: relative; }
-        video { height: 100%; width: 100%; object-fit: contain; background: black; }
+
+        /* Bingkai Video: Fit to Video */
+        .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; border-left: 2px solid #ddd; border-right: 2px solid #ddd; }
+        video { width: 100%; height: 100%; object-fit: contain; background: black; }
+
+        /* Sidebar Kanan: Poster & Jam */
         .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; }
         .poster-container { width: 95%; aspect-ratio: 4 / 5; position: relative; overflow: hidden; border-radius: 15px; background: #000; box-shadow: 0 15px 35px rgba(0,0,0,0.2); }
         .poster-img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; opacity: 0; transition: opacity 1.5s ease-in-out; }
         .poster-img.active { opacity: 1; }
+
         #clock { font-size: 3.5vw; font-weight: bold; color: #2c3e50; margin-top: auto; }
         .footer-name { font-weight: bold; color: #16a085; font-size: 1.2vw; margin: 10px 0; }
+
+        /* Overlay Awal (Keamanan Browser) */
         #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; cursor: pointer; text-align: center; }
     </style>
 </head>
 
 <body onclick="startDisplay()">
 
-    <!-- Overlay Wajib Klik -->
+    <!-- Overlay Klik (Wajib ada agar audio/video jalan) -->
     <div id="overlay">
         <h1>SISTEM ANTRIAN KLINIK</h1>
-        <p>KLIK LAYAR UNTUK MULAI VIDEO & SUARA</p>
+        <p>KLIK LAYAR UNTUK MEMULAI</p>
     </div>
 
-    <!-- Audio Bell Lokal -->
+    <!-- Audio Bell -->
     <audio id="bellSound" src="audio/bell.mp3" preload="auto"></audio>
 
+    <!-- UI: Kolom Kiri -->
     <div class="sidebar-left">
         <div class="card">
             <h2>ANTRIAN SUNAT</h2>
@@ -52,13 +67,14 @@
         </div>
     </div>
 
+    <!-- UI: Kolom Tengah (Video) -->
     <div class="center-video">
-        <!-- Video menggunakan jalur lokal folder 'videos' -->
         <video id="vPlayer" playsinline muted loop>
             <source src="videos/video1.mp4" type="video/mp4">
         </video>
     </div>
 
+    <!-- UI: Kolom Kanan -->
     <div class="sidebar-right">
         <div class="poster-container" id="posterList"></div>
         <div id="clock">00:00:00</div>
@@ -66,6 +82,7 @@
     </div>
 
 <script>
+    // --- FIREBASE CONFIG ---
     const firebaseConfig = {
         apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
         databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app"
@@ -78,25 +95,26 @@
     const bell = document.getElementById('bellSound');
     const sunatNum = document.getElementById('display-sunat');
     const umumNum = document.getElementById('display-umum');
-    
-    // Pastikan file gambar ini ada di root repository anda
-    const posterFiles = ["poster1.jpg", "poster2.jpg"]; 
+
+    // Folder Poster
+    const posterFiles = ["posters/poster1.jpg", "posters/poster2.jpg"]; 
     
     let isStarted = false;
     let currentPosterIdx = 0;
 
+    // FUNGSI MULAI (Picu saat klik pertama)
     function startDisplay() {
         if (isStarted) return;
         isStarted = true;
         document.getElementById('overlay').style.display = 'none';
         
-        // Memulai Video
-        vPlayer.muted = false;
-        vPlayer.play().catch(e => console.log("Gagal putar video:", e));
+        vPlayer.muted = false; // Buka suara video
+        vPlayer.play().catch(err => console.log("Video error:", err));
         
         initPosters();
     }
 
+    // SLIDESHOW POSTER
     function initPosters() {
         const container = document.getElementById('posterList');
         posterFiles.forEach((file, i) => {
@@ -112,9 +130,10 @@
                 currentPosterIdx = (currentPosterIdx + 1) % posters.length;
                 posters[currentPosterIdx].classList.add('active');
             }
-        }, 8000);
+        }, 8000); // Ganti poster tiap 8 detik
     }
 
+    // Jam Digital
     setInterval(() => {
         document.getElementById("clock").innerText = new Date().toLocaleTimeString("id-ID");
     }, 1000);
@@ -124,44 +143,51 @@
         const data = snapshot.val();
         if (!data) return;
 
+        // Logika P/S Otomatis (00:00-11:59 = P, 12:00-23:59 = S)
         const jam = new Date().getHours();
         const autoKode = jam < 12 ? "P" : "S";
         const kUmum = data.kode_umum || autoKode;
+
         const sVal = (data.Sunat || 0).toString().padStart(2, '0');
         const uVal = (data.Umum || 0).toString().padStart(2, '0');
 
         sunatNum.innerText = `N-${sVal}`;
         umumNum.innerText = `${kUmum}-${uVal}`;
 
+        // Logika Panggilan (Recall/Panggil Baru)
         if (data.is_calling === true) {
             vPlayer.pause(); 
             const targetId = (data.tipe_panggil === "SUNAT") ? sunatNum : umumNum;
             sunatNum.classList.remove('blink');
             umumNum.classList.remove('blink');
             targetId.classList.add('blink');
+
             panggilSuara(data.tipe_panggil, sVal, uVal, kUmum);
         } else {
             sunatNum.classList.remove('blink');
             umumNum.classList.remove('blink');
-            if (isStarted) vPlayer.play();
+            if (isStarted) vPlayer.play(); // Lanjutkan video saat admin klik Selesai
         }
     });
 
+    // URUTAN SUARA: BELL -> JEDA 2.5 DETIK -> TTS INDONESIA
     function panggilSuara(tipe, s, u, k) {
         window.speechSynthesis.cancel();
         bell.pause();
         bell.currentTime = 0;
+
         bell.play().then(() => {
             setTimeout(() => {
                 let teks = (tipe === "SUNAT") ? 
                     `Nomor antrian, N, ${s.split('').join(' ')}, Silahkan menuju ruang periksa sunat` :
                     `Nomor antrian, ${k}, ${u.split('').join(' ')}, Silahkan menuju ruang periksa umum`;
+
                 const msg = new SpeechSynthesisUtterance(teks);
                 msg.lang = 'id-ID';
                 msg.rate = 0.8;
                 window.speechSynthesis.speak(msg);
-            }, 2500);
-        }).catch(e => console.log("Audio diblokir"));
+            }, 2500); // 2.5 detik adalah waktu jeda setelah bell ding-dong
+        }).catch(e => console.log("Audio diblokir browser, klik layar!"));
     }
 </script>
 </body>
