@@ -3,10 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <title>Display TV - Rumah Sunat Dokter Yanda</title>
+    <!-- Firebase SDK Legacy -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
     <style>
         body { margin: 0; padding: 0; background: #f4f7f6; display: flex; height: 100vh; overflow: hidden; font-family: sans-serif; }
+        
+        /* Sidebar Kiri */
         .sidebar-left { width: 30%; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 20px; background: #fff; border-right: 2px solid #ddd; }
         .card { background: #fff; border-radius: 20px; padding: 30px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-top: 15px solid #f1c40f; }
         .card-umum { border-top-color: #3498db; }
@@ -14,34 +18,36 @@
         .blink { animation: blinker 1s linear infinite; color: #e74c3c !important; }
         @keyframes blinker { 50% { opacity: 0; } }
 
+        /* TENGAH: Video Player (FULLSCREEN NO BLACK BORDERS) */
         .center-video { width: 40%; background: #000; display: flex; overflow: hidden; position: relative; }
-        video { width: 100%; height: 100%; object-fit: cover; } /* NO BLACK BORDERS */
+        video { width: 100%; height: 100%; object-fit: cover; background: black; }
 
+        /* Sidebar Kanan */
         .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; border-left: 2px solid #ddd; }
         .poster-container { width: 100%; height: 70vh; position: relative; overflow: hidden; border-radius: 15px; background: #000; }
         .poster-img { width: 100%; height: 100%; object-fit: cover; position: absolute; display: none; }
         .poster-img.active { display: block; }
         
         #clock { font-size: 3.5vw; font-weight: bold; color: #2c3e50; margin-top: auto; }
-        #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; cursor: pointer; }
+        #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; cursor: pointer; text-align: center; }
     </style>
 </head>
 <body onclick="startDisplay()">
 
     <div id="overlay">
         <h1>UNIT DISPLAY TV</h1>
-        <p>KLIK LAYAR UNTUK AKTIFKAN SUARA & VIDEO</p>
+        <p>KLIK LAYAR UNTUK AKTIFKAN SUARA & PLAYLIST VIDEO</p>
     </div>
     
     <audio id="bell" src="audio/bell.mp3"></audio>
 
     <div class="sidebar-left">
         <div class="card">
-            <h2 style="color:#f39c12">SUNAT</h2>
+            <h2 style="color:#f39c12; margin:0;">SUNAT</h2>
             <div class="num" id="sunatNum">N-00</div>
         </div>
         <div class="card card-umum">
-            <h2 style="color:#2980b9">UMUM</h2>
+            <h2 style="color:#2980b9; margin:0;">UMUM</h2>
             <div class="num" id="umumNum">P-00</div>
         </div>
     </div>
@@ -56,10 +62,11 @@
             <img src="poster/poster2.jpg" class="poster-img">
         </div>
         <div id="clock">00:00:00</div>
-        <p style="font-weight: bold; color: #7f8c8d;">Rumah Sunat Dokter Yanda</p>
+        <p style="font-weight: bold; color: #7f8c8d; margin-top:10px;">Rumah Sunat Dokter Yanda</p>
     </div>
 
 <script>
+    // --- CONFIG GITHUB ---
     const GITHUB_USER = "praktekdoktereryanda-png"; 
     const GITHUB_REPO = "Antrian"; 
 
@@ -76,7 +83,7 @@
     const umumNum = document.getElementById('umumNum');
     let isStarted = false;
 
-    // SINKRONISASI DATA DARI REMOTE/ADMIN
+    // SINKRONISASI DATA DENGAN REMOTE/ADMIN
     db.ref('antrian').on('value', (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
@@ -84,7 +91,6 @@
         const jam = new Date().getHours();
         const autoKode = jam < 12 ? "P" : "S";
         
-        // Ambil nomor yang sedang dipanggil
         const sVal = (data.nomor_dipanggil?.Sunat || 0).toString().padStart(2, '0');
         const uVal = (data.nomor_dipanggil?.Umum || 0).toString().padStart(2, '0');
 
@@ -122,16 +128,19 @@
         });
     }
 
+    // --- AUTO SCAN GITHUB PLAYLIST ---
     async function fetchPlaylist() {
         try {
             const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/videos`;
             const res = await fetch(apiUrl);
             const files = await res.json();
             if (Array.isArray(files)) {
-                const videoUrls = files.filter(f => f.name.toLowerCase().endsWith('.mp4')).map(f => f.download_url);
+                const videoUrls = files
+                    .filter(f => f.name.toLowerCase().endsWith('.mp4'))
+                    .map(f => f.download_url);
                 if (videoUrls.length > 0) playVideoList(videoUrls, 0);
             }
-        } catch (e) { console.error("Video Error:", e); }
+        } catch (e) { console.error("Gagal scan GitHub:", e); }
     }
 
     function playVideoList(list, index) {
@@ -147,8 +156,9 @@
         isStarted = true;
         document.getElementById('overlay').style.display = 'none';
         vPlayer.muted = false;
-        fetchPlaylist();
+        fetchPlaylist(); // Muat playlist video
         
+        // Loop Poster Samping
         const posters = document.querySelectorAll('.poster-img');
         let pIdx = 0;
         setInterval(() => {
@@ -157,6 +167,7 @@
             posters[pIdx].classList.add('active');
         }, 8000);
 
+        // Jam Digital
         setInterval(() => {
             document.getElementById("clock").innerText = new Date().toLocaleTimeString("id-ID");
         }, 1000);
