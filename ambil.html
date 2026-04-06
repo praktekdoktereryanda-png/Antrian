@@ -1,46 +1,79 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-    <title>Ambil Antrian - Rumah Sunat</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiosk Antrian - Web</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #2c3e50; color: white; padding: 50px; }
-        .btn { padding: 40px; font-size: 2rem; border-radius: 20px; border: none; cursor: pointer; width: 300px; margin: 20px; font-weight: bold; }
-        .btn-sunat { background: #f1c40f; color: black; }
-        .btn-umum { background: #3498db; color: white; }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #f0f2f5; margin: 0; }
+        .card { background: white; padding: 2rem; border-radius: 15px; shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; width: 80%; max-width: 400px; }
+        button { width: 100%; padding: 1.5rem; margin: 10px 0; border: none; border-radius: 10px; font-size: 1.2rem; font-weight: bold; cursor: pointer; color: white; transition: 0.3s; }
+        .btn-sunat { background: #f1c40f; }
+        .btn-umum { background: #3498db; }
+        button:active { transform: scale(0.98); }
     </style>
 </head>
 <body>
-    <h1>AMBIL ANTRIAN</h1>
-    <button class="btn btn-sunat" onclick="ambil('sunat')">SUNAT (N)</button>
-    <button class="btn btn-umum" onclick="ambil('umum')">UMUM (P/S)</button>
+
+    <div class="card">
+        <h2>Pilih Layanan</h2>
+        <button class="btn-sunat" onclick="ambilAntrian('SUNAT')">ANTRIAN SUNAT (N)</button>
+        <button class="btn-umum" onclick="ambilAntrian('UMUM')">PRAKTEK UMUM (P/S)</button>
+        <p id="status" style="color: gray; font-size: 0.8rem;"></p>
+    </div>
 
     <script>
-        const firebaseConfig = { databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app" };
+        // MASUKKAN KONFIGURASI FIREBASE ANDA DI SINI
+        const firebaseConfig = {
+            apiKey: "AIzaSy...",
+            authDomain: "PROYEK-ANDA.firebaseapp.com",
+            databaseURL: "https://PROYEK-ANDA-default-rtdb.firebaseio.com",
+            projectId: "PROYEK-ANDA",
+            storageBucket: "PROYEK-ANDA.appspot.com",
+            messagingSenderId: "...",
+            appId: "..."
+        };
+
+        // Inisialisasi Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        function ambil(tipe) {
-            const jam = new Date().getHours();
-            const kode = (tipe === 'sunat') ? 'N' : (jam < 12 ? 'P' : 'S');
-            const counterPath = `counter/${kode}`;
+        function ambilAntrian(tipe) {
+            const statusText = document.getElementById('status');
+            statusText.innerText = "Memproses...";
 
-            db.ref(counterPath).transaction((current) => {
-                return (current || 0) + 1;
+            let kode = "N";
+            if (tipe === "UMUM") {
+                const jam = new Date().getHours();
+                kode = (jam < 12) ? "P" : "S";
+            }
+
+            const counterRef = db.ref('counter/' + kode);
+
+            // LOGIKA TRANSAKSI (SAMA DENGAN ANDROID)
+            counterRef.transaction((currentValue) => {
+                return (currentValue || 0) + 1;
             }, (error, committed, snapshot) => {
                 if (committed) {
-                    const no = snapshot.val();
-                    // Simpan ke antrian_list agar Admin bisa melihat
-                    db.ref(`antrian_list/${tipe}`).push({
-                        nomor: no,
+                    const nextNomor = snapshot.val();
+                    const formatted = kode + "-" + String(nextNomor).padStart(2, '0');
+                    
+                    // Simpan ke daftar antrian agar terbaca Admin
+                    const path = tipe === "SUNAT" ? "antrian/antrian_list/sunat" : "antrian/antrian_list/umum";
+                    db.ref(path).push({
+                        nomor: nextNomor,
                         kode: kode,
                         status: "menunggu",
                         timestamp: firebase.database.ServerValue.TIMESTAMP
                     });
-                    // Update nomor_terakhir untuk info Kiosk
-                    db.ref(`antrian/nomor_terakhir/${tipe === 'sunat' ? 'Sunat' : 'Umum'}`).set(no);
-                    alert("Nomor Anda: " + kode + "-" + no.toString().padStart(2, '0'));
+
+                    statusText.innerText = "Berhasil: " + formatted;
+                    alert("Nomor Antrian Anda: " + formatted);
+                } else {
+                    statusText.innerText = "Gagal mengambil nomor.";
                 }
             });
         }
