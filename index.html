@@ -38,7 +38,7 @@
         </div>
         <div class="card card-umum">
             <h2>PRAKTEK UMUM</h2>
-            <div class="num" id="display-umum">S-00</div>
+            <div class="num" id="display-umum">P-00</div>
         </div>
     </div>
 
@@ -48,7 +48,6 @@
 
     <div class="sidebar-right">
         <div class="poster-container" id="posterList">
-            <!-- Isi dengan poster Anda -->
             <img src="poster/poster1.jpg" class="poster-img active">
             <img src="poster/poster2.jpg" class="poster-img">
         </div>
@@ -66,12 +65,11 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-
     const vPlayer = document.getElementById('vPlayer');
     const bell = document.getElementById('bellSound');
     let isStarted = false;
 
-    // SINKRONISASI PATH DENGAN ANDROID
+    // SINKRONISASI DENGAN ANDROID (MainActivity.kt)
     db.ref('antrian').on('value', (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
@@ -86,10 +84,13 @@
         document.getElementById('display-sunat').innerText = `N-${sDipanggil}`;
         document.getElementById('display-umum').innerText = `${kodeUmum}-${uDipanggil}`;
 
-        // HANYA BUNYI JIKA is_calling === true (Trigger dari Admin)
+        // HANYA BUNYI JIKA is_calling === true (Trigger dari tombol Panggil di Admin)
         if (data.is_calling === true) {
             vPlayer.pause();
             const target = data.tipe_panggil === "SUNAT" ? "display-sunat" : "display-umum";
+            
+            document.getElementById('display-sunat').classList.remove('blink');
+            document.getElementById('display-umum').classList.remove('blink');
             document.getElementById(target).classList.add('blink');
             
             const nomorTarget = data.tipe_panggil === "SUNAT" ? sDipanggil : uDipanggil;
@@ -119,8 +120,8 @@
         try {
             const res = await fetch(apiUrl);
             const files = await res.json();
-            const videoPlaylist = files.filter(f => f.name.endsWith('.mp4')).map(f => f.download_url);
-            if (videoPlaylist.length > 0) playVideo(videoPlaylist, 0);
+            const playlist = files.filter(f => f.name.endsWith('.mp4')).map(f => f.download_url);
+            if (playlist.length > 0) playVideo(playlist, 0);
         } catch (e) {}
     }
 
@@ -137,6 +138,13 @@
         document.getElementById('overlay').style.display = 'none';
         vPlayer.muted = false;
         fetchPlaylist();
+        setInterval(() => {
+            const posters = document.querySelectorAll('.poster-img');
+            let active = 0;
+            posters.forEach((p, i) => { if(p.classList.contains('active')) active = i; });
+            posters[active].classList.remove('active');
+            posters[(active + 1) % posters.length].classList.add('active');
+        }, 8000);
         setInterval(() => {
             document.getElementById("clock").innerText = new Date().toLocaleTimeString("id-ID");
         }, 1000);
