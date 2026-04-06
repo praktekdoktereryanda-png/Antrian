@@ -2,153 +2,99 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Display Antrian - Rumah Sunat Dokter Yanda</title>
+    <title>Display TV - Rumah Sunat Dokter Yanda</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
     <style>
-        body { margin: 0; padding: 0; background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; width: 100vw; overflow: hidden; }
-        .sidebar-left { width: 30%; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 20px; background: #fff; border-right: 2px solid #ddd; }
+        body { margin: 0; background: #f4f7f6; font-family: sans-serif; display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 30%; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 20px; background: #fff; border-right: 2px solid #ddd; }
         .card { background: #fff; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-top: 15px solid #f1c40f; }
         .card-umum { border-top: 15px solid #3498db; }
-        .card h2 { margin: 0; font-size: 2vw; color: #34495e; border-bottom: 5px solid #f1c40f; display: inline-block; }
-        .card-umum h2 { border-bottom: 5px solid #3498db; }
-        .num { font-size: 8.5vw; font-weight: bold; margin: 5px 0; color: #2c3e50; }
+        .num { font-size: 8vw; font-weight: bold; color: #2c3e50; }
         .blink { animation: blinker 1s linear infinite; color: #e74c3c !important; }
         @keyframes blinker { 50% { opacity: 0; } }
-        .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-        video { width: 100%; height: 100%; object-fit: cover; background: black; }
-        .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; }
-        .poster-container { width: 95%; height: 70vh; position: relative; overflow: hidden; border-radius: 15px; background: #000; }
-        .poster-img { width: 100%; height: 100%; object-fit: cover; position: absolute; display: none; }
-        .poster-img.active { display: block; }
-        #clock { font-size: 3.5vw; font-weight: bold; color: #2c3e50; margin-top: auto; }
+        .center-video { width: 40%; background: #000; display: flex; justify-content: center; }
+        video { width: 100%; height: 100%; object-fit: cover; }
         #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); color: white; display: flex; align-items: center; justify-content: center; z-index: 100; cursor: pointer; }
     </style>
 </head>
 <body onclick="startDisplay()">
+    <div id="overlay"><h1>KLIK UNTUK AKTIFKAN TV</h1></div>
+    <audio id="bell" src="audio/bell.mp3"></audio>
 
-    <div id="overlay"><h1>KLIK UNTUK MULAI DISPLAY TV</h1></div>
-    <audio id="bellSound" src="audio/bell.mp3" preload="auto"></audio>
-
-    <div class="sidebar-left">
+    <div class="sidebar">
         <div class="card">
-            <h2>ANTRIAN SUNAT</h2>
-            <div class="num" id="display-sunat">N-00</div>
+            <h2>SUNAT</h2>
+            <div class="num" id="tv-sunat">N-00</div>
         </div>
         <div class="card card-umum">
-            <h2>PRAKTEK UMUM</h2>
-            <div class="num" id="display-umum">P-00</div>
+            <h2>UMUM</h2>
+            <div class="num" id="tv-umum">P-00</div>
         </div>
     </div>
 
-    <div class="center-video">
-        <video id="vPlayer" playsinline muted></video>
-    </div>
+    <div class="center-video"><video id="vPlayer" muted></video></div>
 
-    <div class="sidebar-right">
-        <div class="poster-container" id="posterList">
-            <img src="poster/poster1.jpg" class="poster-img active">
-            <img src="poster/poster2.jpg" class="poster-img">
-        </div>
-        <div id="clock">00:00:00</div>
-    </div>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
+            databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const vPlayer = document.getElementById('vPlayer');
 
-<script>
-    const GITHUB_USER = "praktekdoktereryanda-png"; 
-    const GITHUB_REPO = "Antrian"; 
-    
-    const firebaseConfig = {
-        apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
-        databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app"
-    };
+        // LOGIKA UTAMA: Hanya dengarkan path 'nomor_dipanggil'
+        db.ref('antrian').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const vPlayer = document.getElementById('vPlayer');
-    const bell = document.getElementById('bellSound');
-    let isStarted = false;
+            // 1. Ambil data HANYA dari 'nomor_dipanggil' (milik Admin)
+            const sDipanggil = (data.nomor_dipanggil?.Sunat || 0).toString().padStart(2, '0');
+            const uDipanggil = (data.nomor_dipanggil?.Umum || 0).toString().padStart(2, '0');
+            const jam = new Date().getHours();
+            const kodeUmum = jam < 12 ? "P" : "S";
 
-    // SINKRONISASI DENGAN ANDROID (MainActivity.kt)
-    db.ref('antrian').on('value', (snapshot) => {
-        const data = snapshot.val();
-        if (!data) return;
+            // Update Angka di Layar
+            document.getElementById('tv-sunat').innerText = `N-${sDipanggil}`;
+            document.getElementById('tv-umum').innerText = `${kodeUmum}-${uDipanggil}`;
 
-        // Tampilkan nomor yang SEDANG DIPANGGIL (bukan nomor terakhir ambil)
-        const sDipanggil = (data.nomor_dipanggil?.Sunat || 0).toString().padStart(2, '0');
-        const uDipanggil = (data.nomor_dipanggil?.Umum || 0).toString().padStart(2, '0');
-        
-        const jam = new Date().getHours();
-        const kodeUmum = jam < 12 ? "P" : "S";
+            // 2. Cek apakah Admin sedang memanggil (is_calling)
+            if (data.is_calling === true) {
+                vPlayer.pause(); // Stop video saat memanggil
+                const targetId = data.tipe_panggil === "SUNAT" ? "tv-sunat" : "tv-umum";
+                const nomorSuara = data.tipe_panggil === "SUNAT" ? sDipanggil : uDipanggil;
+                
+                document.getElementById('tv-sunat').classList.remove('blink');
+                document.getElementById('tv-umum').classList.remove('blink');
+                document.getElementById(targetId).classList.add('blink');
 
-        document.getElementById('display-sunat').innerText = `N-${sDipanggil}`;
-        document.getElementById('display-umum').innerText = `${kodeUmum}-${uDipanggil}`;
-
-        // HANYA BUNYI JIKA is_calling === true (Trigger dari tombol Panggil di Admin)
-        if (data.is_calling === true) {
-            vPlayer.pause();
-            const target = data.tipe_panggil === "SUNAT" ? "display-sunat" : "display-umum";
-            
-            document.getElementById('display-sunat').classList.remove('blink');
-            document.getElementById('display-umum').classList.remove('blink');
-            document.getElementById(target).classList.add('blink');
-            
-            const nomorTarget = data.tipe_panggil === "SUNAT" ? sDipanggil : uDipanggil;
-            panggilSuara(data.tipe_panggil, nomorTarget, kodeUmum);
-        } else {
-            document.getElementById('display-sunat').classList.remove('blink');
-            document.getElementById('display-umum').classList.remove('blink');
-            if(isStarted) vPlayer.play().catch(()=>{});
-        }
-    });
-
-    function panggilSuara(tipe, nomor, kode) {
-        window.speechSynthesis.cancel();
-        bell.currentTime = 0;
-        bell.play().then(() => {
-            setTimeout(() => {
-                let text = tipe === "SUNAT" ? `Nomor antrian N ${nomor}, silahkan menuju ruang periksa sunat` : `Nomor antrian ${kode} ${nomor}, silahkan menuju ruang periksa umum`;
-                let msg = new SpeechSynthesisUtterance(text);
-                msg.lang = 'id-ID';
-                window.speechSynthesis.speak(msg);
-            }, 2500);
+                panggilSuara(data.tipe_panggil, nomorSuara, kodeUmum);
+            } else {
+                // Jika is_calling == false (Admin matikan bel), stop blink & play video
+                document.getElementById('tv-sunat').classList.remove('blink');
+                document.getElementById('tv-umum').classList.remove('blink');
+                vPlayer.play().catch(()=>{});
+            }
         });
-    }
 
-    async function fetchPlaylist() {
-        const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/videos`;
-        try {
-            const res = await fetch(apiUrl);
-            const files = await res.json();
-            const playlist = files.filter(f => f.name.endsWith('.mp4')).map(f => f.download_url);
-            if (playlist.length > 0) playVideo(playlist, 0);
-        } catch (e) {}
-    }
+        function panggilSuara(tipe, nomor, kode) {
+            window.speechSynthesis.cancel();
+            document.getElementById('bell').play().then(() => {
+                setTimeout(() => {
+                    let text = tipe === "SUNAT" ? `Nomor antrian N ${nomor}, silahkan ke ruang sunat` : `Nomor antrian ${kode} ${nomor}, silahkan ke ruang umum`;
+                    let msg = new SpeechSynthesisUtterance(text);
+                    msg.lang = 'id-ID';
+                    window.speechSynthesis.speak(msg);
+                }, 2500);
+            });
+        }
 
-    function playVideo(list, index) {
-        if (index >= list.length) index = 0;
-        vPlayer.src = list[index];
-        vPlayer.play();
-        vPlayer.onended = () => playVideo(list, index + 1);
-    }
-
-    function startDisplay() {
-        if (isStarted) return;
-        isStarted = true;
-        document.getElementById('overlay').style.display = 'none';
-        vPlayer.muted = false;
-        fetchPlaylist();
-        setInterval(() => {
-            const posters = document.querySelectorAll('.poster-img');
-            let active = 0;
-            posters.forEach((p, i) => { if(p.classList.contains('active')) active = i; });
-            posters[active].classList.remove('active');
-            posters[(active + 1) % posters.length].classList.add('active');
-        }, 8000);
-        setInterval(() => {
-            document.getElementById("clock").innerText = new Date().toLocaleTimeString("id-ID");
-        }, 1000);
-    }
-</script>
+        function startDisplay() {
+            document.getElementById('overlay').style.display = 'none';
+            vPlayer.muted = false;
+            // Panggil fungsi fetchPlaylist video anda di sini
+        }
+    </script>
 </body>
 </html>
