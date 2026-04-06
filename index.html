@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>Display Antrian - Rumah Sunat Dokter Yanda</title>
-    <!-- Firebase SDK Legacy -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -17,11 +16,8 @@
         .num { font-size: 8.5vw; font-weight: bold; margin: 5px 0; color: #2c3e50; }
         .blink { animation: blinker 1s linear infinite; transform: scale(1.1); color: #e74c3c !important; }
         @keyframes blinker { 50% { opacity: 0; } }
-
-        /* TENGAH: Bingkai Video Optimized for 9:16 */
         .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; border-left: 2px solid #ddd; border-right: 2px solid #ddd; }
         video { width: 100%; height: 100%; object-fit: contain; background: black; }
-
         .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; }
         .poster-container { width: 95%; height: 70vh; position: relative; overflow: hidden; border-radius: 15px; background: #000; box-shadow: 0 15px 35px rgba(0,0,0,0.2); }
         .poster-img { width: 100%; height: 100%; object-fit: contain; position: absolute; top: 0; left: 0; display: none; }
@@ -66,11 +62,7 @@
     </div>
 
 <script>
-    // --- KONFIGURASI GITHUB (PASTIKAN REPO PUBLIC) ---
-    const GITHUB_USER = "praktekdokteryanda-png"; 
-    const GITHUB_REPO = "Antrian"; 
-    const VIDEO_FOLDER = "videos";
-
+    // --- KONFIGURASI FIREBASE ---
     const firebaseConfig = {
         apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
         databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app"
@@ -89,11 +81,11 @@
     let currentVideoIdx = 0;
     let currentPosterIdx = 0;
 
-    // FUNGSI AUTO SCAN FOLDER VIDEO
+    // FUNGSI MEMBACA FOLDER VIDEO OTOMATIS DARI GITHUB PUBLIC
     async function fetchPlaylist() {
         try {
-            // URL API GitHub yang benar untuk isi folder
-            const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${VIDEO_FOLDER}`;
+            // URL LANGSUG KE REPO ANDA (Hardcoded agar tidak salah variabel)
+            const apiUrl = `https://api.github.com/repos/praktekdokteryanda-png/Antrian/contents/videos`;
             
             const response = await fetch(apiUrl);
             const files = await response.json();
@@ -104,17 +96,17 @@
                     .filter(file => file.name.toLowerCase().endsWith('.mp4'))
                     .map(file => file.download_url);
 
-                console.log("Video Ditemukan:", videoPlaylist.length);
+                console.log("Video ditemukan:", videoPlaylist);
 
                 if (videoPlaylist.length > 0) {
                     playVideo(0);
                 }
             } else {
-                console.error("Gagal membaca folder GitHub. Hasil bukan array:", files);
+                console.error("Gagal membaca folder GitHub:", files);
             }
         } catch (error) {
             console.error("Error GitHub API:", error);
-            // Fallback jika API bermasalah
+            // Fallback jika API limit
             videoPlaylist = ["videos/video1.mp4"];
             playVideo(0);
         }
@@ -125,7 +117,7 @@
         currentVideoIdx = index;
         vPlayer.src = videoPlaylist[currentVideoIdx];
         vPlayer.load();
-        vPlayer.play().catch(() => console.log("Menunggu Start"));
+        vPlayer.play().catch(e => console.log("Playback diblokir, butuh klik"));
 
         vPlayer.onended = () => {
             currentVideoIdx++;
@@ -138,7 +130,7 @@
         isStarted = true;
         document.getElementById('overlay').style.display = 'none';
         vPlayer.muted = false;
-        fetchPlaylist(); // Mulai scan video
+        fetchPlaylist(); // Jalankan scan video
         startPosterLoop();
     }
 
@@ -160,6 +152,7 @@
     db.ref('antrian').on('value', (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
+        
         const jam = new Date().getHours();
         const autoKode = jam < 12 ? "P" : "S";
         const kUmum = data.kode_umum || autoKode;
