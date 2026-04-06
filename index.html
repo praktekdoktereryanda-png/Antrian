@@ -6,16 +6,19 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        body { margin: 0; background: #f4f7f6; font-family: sans-serif; display: flex; height: 100vh; overflow: hidden; }
-        .sidebar { width: 30%; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 20px; background: #fff; border-right: 2px solid #ddd; }
-        .card { background: #fff; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-top: 15px solid #f1c40f; }
-        .card-umum { border-top: 15px solid #3498db; }
+        body { margin: 0; display: flex; height: 100vh; background: #000; overflow: hidden; font-family: sans-serif; }
+        .sidebar { width: 30%; background: #fff; display: flex; flex-direction: column; justify-content: center; padding: 20px; gap: 20px; z-index: 10; }
+        .card { background: #fff; border-radius: 20px; padding: 30px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-top: 20px solid #f1c40f; }
+        .card-umum { border-top: 20px solid #3498db; }
         .num { font-size: 8vw; font-weight: bold; color: #2c3e50; }
+        
+        /* VIDEO & POSTER: NO BLACK BORDERS */
+        .main-display { width: 70%; position: relative; background: #000; }
+        video, .poster { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
+        
         .blink { animation: blinker 1s linear infinite; color: #e74c3c !important; }
         @keyframes blinker { 50% { opacity: 0; } }
-        .center-video { width: 40%; background: #000; display: flex; justify-content: center; }
-        video { width: 100%; height: 100%; object-fit: cover; }
-        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); color: white; display: flex; align-items: center; justify-content: center; z-index: 100; cursor: pointer; }
+        #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); color: white; display: flex; align-items: center; justify-content: center; z-index: 100; cursor: pointer; }
     </style>
 </head>
 <body onclick="startDisplay()">
@@ -33,7 +36,10 @@
         </div>
     </div>
 
-    <div class="center-video"><video id="vPlayer" muted></video></div>
+    <div class="main-display">
+        <img id="posterImg" class="poster" src="poster/default.jpg" style="display:none;">
+        <video id="vPlayer" muted></video>
+    </div>
 
     <script>
         const firebaseConfig = {
@@ -42,39 +48,26 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        const vPlayer = document.getElementById('vPlayer');
 
-        // LOGIKA UTAMA: Hanya dengarkan path 'nomor_dipanggil'
+        // LOGIKA: Hanya TV bereaksi pada 'nomor_dipanggil' (Trigger Admin)
         db.ref('antrian').on('value', (snapshot) => {
             const data = snapshot.val();
             if (!data) return;
 
-            // 1. Ambil data HANYA dari 'nomor_dipanggil' (milik Admin)
-            const sDipanggil = (data.nomor_dipanggil?.Sunat || 0).toString().padStart(2, '0');
-            const uDipanggil = (data.nomor_dipanggil?.Umum || 0).toString().padStart(2, '0');
-            const jam = new Date().getHours();
-            const kodeUmum = jam < 12 ? "P" : "S";
+            const sunat = (data.nomor_dipanggil?.Sunat || 0).toString().padStart(2, '0');
+            const umum = (data.nomor_dipanggil?.Umum || 0).toString().padStart(2, '0');
+            const kode = (new Date().getHours() < 12) ? "P" : "S";
 
-            // Update Angka di Layar
-            document.getElementById('tv-sunat').innerText = `N-${sDipanggil}`;
-            document.getElementById('tv-umum').innerText = `${kodeUmum}-${uDipanggil}`;
+            document.getElementById('tv-sunat').innerText = `N-${sunat}`;
+            document.getElementById('tv-umum').innerText = `${kode}-${umum}`;
 
-            // 2. Cek apakah Admin sedang memanggil (is_calling)
             if (data.is_calling === true) {
-                vPlayer.pause(); // Stop video saat memanggil
-                const targetId = data.tipe_panggil === "SUNAT" ? "tv-sunat" : "tv-umum";
-                const nomorSuara = data.tipe_panggil === "SUNAT" ? sDipanggil : uDipanggil;
-                
-                document.getElementById('tv-sunat').classList.remove('blink');
-                document.getElementById('tv-umum').classList.remove('blink');
-                document.getElementById(targetId).classList.add('blink');
-
-                panggilSuara(data.tipe_panggil, nomorSuara, kodeUmum);
+                const target = data.tipe_panggil === "SUNAT" ? "tv-sunat" : "tv-umum";
+                document.getElementById(target).classList.add('blink');
+                panggilSuara(data.tipe_panggil, data.tipe_panggil === "SUNAT" ? sunat : umum, kode);
             } else {
-                // Jika is_calling == false (Admin matikan bel), stop blink & play video
                 document.getElementById('tv-sunat').classList.remove('blink');
                 document.getElementById('tv-umum').classList.remove('blink');
-                vPlayer.play().catch(()=>{});
             }
         });
 
@@ -82,8 +75,8 @@
             window.speechSynthesis.cancel();
             document.getElementById('bell').play().then(() => {
                 setTimeout(() => {
-                    let text = tipe === "SUNAT" ? `Nomor antrian N ${nomor}, silahkan ke ruang sunat` : `Nomor antrian ${kode} ${nomor}, silahkan ke ruang umum`;
-                    let msg = new SpeechSynthesisUtterance(text);
+                    const txt = tipe === "SUNAT" ? `Nomor antrian N ${nomor}, ruang sunat` : `Nomor antrian ${kode} ${nomor}, ruang umum`;
+                    const msg = new SpeechSynthesisUtterance(txt);
                     msg.lang = 'id-ID';
                     window.speechSynthesis.speak(msg);
                 }, 2500);
@@ -92,8 +85,8 @@
 
         function startDisplay() {
             document.getElementById('overlay').style.display = 'none';
-            vPlayer.muted = false;
-            // Panggil fungsi fetchPlaylist video anda di sini
+            document.getElementById('vPlayer').muted = false;
+            // Fetch playlist video dari GitHub API (seperti kode sebelumnya)
         }
     </script>
 </body>
