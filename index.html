@@ -8,7 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
-        /* UI TETAP SAMA - TIDAK BERUBAH */
+        /* UI TETAP SAMA (TIDAK BERUBAH) */
         body { margin: 0; padding: 0; background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; width: 100vw; overflow: hidden; }
         .sidebar-left { width: 30%; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 20px; background: #fff; border-right: 2px solid #ddd; }
         .card { background: #fff; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #eee; border-top: 15px solid #f1c40f; }
@@ -19,7 +19,6 @@
         .blink { animation: blinker 1s linear infinite; transform: scale(1.1); color: #e74c3c !important; }
         @keyframes blinker { 50% { opacity: 0; } }
         
-        /* Bingkai Video Fit 9:16 */
         .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; border-left: 2px solid #ddd; border-right: 2px solid #ddd; }
         video { width: 100%; height: 100%; object-fit: contain; background: black; }
         
@@ -67,9 +66,9 @@
     </div>
 
 <script>
-    // --- KONFIGURASI AUTO SCAN GITHUB ---
+    // --- KONFIGURASI SCAN OTOMATIS ---
     const GITHUB_USER = "praktekdokteryanda-png"; 
-    const GITHUB_REPO = "Antrian";
+    const GITHUB_REPO = "Antrian"; 
     const VIDEO_FOLDER = "videos";
 
     const firebaseConfig = {
@@ -90,43 +89,43 @@
     let currentVideoIdx = 0;
     let currentPosterIdx = 0;
 
-    // 1. LOGIKA SELALU UPDATE MEMBACA FOLDER VIDEO
-    async function fetchVideoPlaylist() {
+    // FUNGSI MEMBACA ISI FOLDER VIDEOS SECARA OTOMATIS
+    async function scanVideos() {
         try {
-            // Memanggil API GitHub untuk membaca isi folder 'videos'
+            // Meminta daftar file ke API GitHub
             const response = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${VIDEO_FOLDER}`);
             const files = await response.json();
 
-            // Filter hanya file yang berakhiran .mp4
+            // Filter hanya file video .mp4
             videoPlaylist = files
                 .filter(file => file.name.toLowerCase().endsWith('.mp4'))
-                .map(file => file.download_url); // Mengambil link download mentah
+                .map(file => file.download_url);
 
-            console.log("Video ditemukan:", videoPlaylist.length);
-            
+            console.log("Daftar video berhasil dimuat:", videoPlaylist);
+
             if (videoPlaylist.length > 0) {
-                playVideo(0);
+                playPlaylist(0);
             }
         } catch (error) {
-            console.error("Gagal membaca folder videos. Pastikan Repo Public!", error);
-            // Fallback jika API gagal (opsional)
-            videoPlaylist = ["videos/video1.mp4"];
-            playVideo(0);
+            console.error("Gagal scan folder. Jika Repo Private, API GitHub akan memblokir ini.", error);
+            // Fallback manual jika API gagal
+            videoPlaylist = ["videos/video1.mp4", "videos/video2.mp4"];
+            playPlaylist(0);
         }
     }
 
-    function playVideo(index) {
+    function playPlaylist(index) {
         if (index >= videoPlaylist.length) index = 0;
         currentVideoIdx = index;
 
         vPlayer.src = videoPlaylist[currentVideoIdx];
         vPlayer.load();
-        vPlayer.play().catch(e => console.log("Menunggu interaksi user..."));
+        vPlayer.play().catch(e => console.log("Menunggu Klik"));
 
-        // Saat video selesai, putar yang berikutnya
+        // Otomatis putar video berikutnya saat video selesai
         vPlayer.onended = () => {
             currentVideoIdx++;
-            playVideo(currentVideoIdx);
+            playPlaylist(currentVideoIdx);
         };
     }
 
@@ -136,7 +135,7 @@
         document.getElementById('overlay').style.display = 'none';
         vPlayer.muted = false;
         
-        fetchVideoPlaylist(); // Panggil fungsi auto-scan
+        scanVideos(); // Jalankan scan otomatis
         startPosterLoop();
     }
 
@@ -154,7 +153,7 @@
         document.getElementById("clock").innerText = new Date().toLocaleTimeString("id-ID");
     }, 1000);
 
-    // FIREBASE LISTENER
+    // FIREBASE SYNC
     db.ref('antrian').on('value', (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
