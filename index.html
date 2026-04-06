@@ -16,10 +16,8 @@
         .num { font-size: 8.5vw; font-weight: bold; margin: 5px 0; color: #2c3e50; }
         .blink { animation: blinker 1s linear infinite; color: #e74c3c !important; }
         @keyframes blinker { 50% { opacity: 0; } }
-
         .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; overflow: hidden; }
         video { width: 100%; height: 100%; object-fit: cover; background: black; }
-
         .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; }
         .poster-container { width: 95%; height: 70vh; position: relative; overflow: hidden; border-radius: 15px; background: #000; }
         .poster-img { width: 100%; height: 100%; object-fit: cover; position: absolute; display: none; }
@@ -50,6 +48,7 @@
 
     <div class="sidebar-right">
         <div class="poster-container" id="posterList">
+            <!-- Isi dengan poster Anda -->
             <img src="poster/poster1.jpg" class="poster-img active">
             <img src="poster/poster2.jpg" class="poster-img">
         </div>
@@ -70,16 +69,14 @@
 
     const vPlayer = document.getElementById('vPlayer');
     const bell = document.getElementById('bellSound');
-    let videoPlaylist = [];
-    let currentVideoIdx = 0;
     let isStarted = false;
 
-    // Sinkronisasi dengan Path Android
+    // SINKRONISASI PATH DENGAN ANDROID
     db.ref('antrian').on('value', (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
 
-        // Ambil nomor yang sedang dipanggil (dipanggil oleh Admin)
+        // Tampilkan nomor yang SEDANG DIPANGGIL (bukan nomor terakhir ambil)
         const sDipanggil = (data.nomor_dipanggil?.Sunat || 0).toString().padStart(2, '0');
         const uDipanggil = (data.nomor_dipanggil?.Umum || 0).toString().padStart(2, '0');
         
@@ -89,49 +86,20 @@
         document.getElementById('display-sunat').innerText = `N-${sDipanggil}`;
         document.getElementById('display-umum').innerText = `${kodeUmum}-${uDipanggil}`;
 
-        // Fitur Panggilan (Detect is_calling)
+        // HANYA BUNYI JIKA is_calling === true (Trigger dari Admin)
         if (data.is_calling === true) {
             vPlayer.pause();
             const target = data.tipe_panggil === "SUNAT" ? "display-sunat" : "display-umum";
             document.getElementById(target).classList.add('blink');
             
-            panggilSuara(data.tipe_panggil, data.tipe_panggil === "SUNAT" ? sDipanggil : uDipanggil, kodeUmum);
+            const nomorTarget = data.tipe_panggil === "SUNAT" ? sDipanggil : uDipanggil;
+            panggilSuara(data.tipe_panggil, nomorTarget, kodeUmum);
         } else {
             document.getElementById('display-sunat').classList.remove('blink');
             document.getElementById('display-umum').classList.remove('blink');
             if(isStarted) vPlayer.play().catch(()=>{});
         }
     });
-
-    async function fetchPlaylist() {
-        const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/videos`;
-        try {
-            const res = await fetch(apiUrl);
-            const files = await res.json();
-            videoPlaylist = files.filter(f => f.name.endsWith('.mp4')).map(f => f.download_url);
-            if (videoPlaylist.length > 0) playVideo(0);
-        } catch (e) { console.error("GitHub Error"); }
-    }
-
-    function playVideo(index) {
-        if (index >= videoPlaylist.length) index = 0;
-        vPlayer.src = videoPlaylist[index];
-        vPlayer.load();
-        vPlayer.play();
-        vPlayer.onended = () => playVideo(index + 1);
-    }
-
-    function startDisplay() {
-        if (isStarted) return;
-        isStarted = true;
-        document.getElementById('overlay').style.display = 'none';
-        document.documentElement.requestFullscreen().catch(()=>{});
-        vPlayer.muted = false;
-        fetchPlaylist();
-        setInterval(() => {
-            document.getElementById("clock").innerText = new Date().toLocaleTimeString("id-ID");
-        }, 1000);
-    }
 
     function panggilSuara(tipe, nomor, kode) {
         window.speechSynthesis.cancel();
@@ -144,6 +112,34 @@
                 window.speechSynthesis.speak(msg);
             }, 2500);
         });
+    }
+
+    async function fetchPlaylist() {
+        const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/videos`;
+        try {
+            const res = await fetch(apiUrl);
+            const files = await res.json();
+            const videoPlaylist = files.filter(f => f.name.endsWith('.mp4')).map(f => f.download_url);
+            if (videoPlaylist.length > 0) playVideo(videoPlaylist, 0);
+        } catch (e) {}
+    }
+
+    function playVideo(list, index) {
+        if (index >= list.length) index = 0;
+        vPlayer.src = list[index];
+        vPlayer.play();
+        vPlayer.onended = () => playVideo(list, index + 1);
+    }
+
+    function startDisplay() {
+        if (isStarted) return;
+        isStarted = true;
+        document.getElementById('overlay').style.display = 'none';
+        vPlayer.muted = false;
+        fetchPlaylist();
+        setInterval(() => {
+            document.getElementById("clock").innerText = new Date().toLocaleTimeString("id-ID");
+        }, 1000);
     }
 </script>
 </body>
