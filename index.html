@@ -9,8 +9,6 @@
 
     <style>
         body { margin: 0; padding: 0; background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; width: 100vw; overflow: hidden; }
-        
-        /* Sidebar Kiri */
         .sidebar-left { width: 30%; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 20px; background: #fff; border-right: 2px solid #ddd; }
         .card { background: #fff; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #eee; border-top: 15px solid #f1c40f; }
         .card-umum { border-top: 15px solid #3498db; }
@@ -20,18 +18,16 @@
         .blink { animation: blinker 1s linear infinite; transform: scale(1.1); color: #e74c3c !important; }
         @keyframes blinker { 50% { opacity: 0; } }
 
-        /* Tengah: Video Bingkai 9:16 */
+        /* TENGAH: Bingkai Video Optimized for 9:16 */
         .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; border-left: 2px solid #ddd; border-right: 2px solid #ddd; }
         video { width: 100%; height: 100%; object-fit: contain; background: black; }
 
-        /* Sidebar Kanan */
         .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; }
         .poster-container { width: 95%; height: 70vh; position: relative; overflow: hidden; border-radius: 15px; background: #000; box-shadow: 0 15px 35px rgba(0,0,0,0.2); }
         .poster-img { width: 100%; height: 100%; object-fit: contain; position: absolute; top: 0; left: 0; display: none; }
         .poster-img.active { display: block; }
         #clock { font-size: 3.5vw; font-weight: bold; color: #2c3e50; margin-top: auto; }
         .footer-name { font-weight: bold; color: #16a085; font-size: 1.2vw; margin: 10px 0; }
-        
         #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; cursor: pointer; text-align: center; }
     </style>
 </head>
@@ -52,7 +48,7 @@
         </div>
         <div class="card card-umum">
             <h2>PRAKTEK UMUM</h2>
-            <div class="num" id="display-umum" style="color: #3498db;">P-00</div>
+            <div class="num" id="display-umum" style="color: #3498db;">S-00</div>
         </div>
     </div>
 
@@ -70,9 +66,9 @@
     </div>
 
 <script>
-    // --- PENGATURAN GITHUB (SESUAIKAN DENGAN REPO ANDA) ---
+    // --- KONFIGURASI GITHUB (PASTIKAN REPO PUBLIC) ---
     const GITHUB_USER = "praktekdokteryanda-png"; 
-    const GITHUB_REPO = "Antrian";
+    const GITHUB_REPO = "Antrian"; 
     const VIDEO_FOLDER = "videos";
 
     const firebaseConfig = {
@@ -96,30 +92,29 @@
     // FUNGSI AUTO SCAN FOLDER VIDEO
     async function fetchPlaylist() {
         try {
-            // Tambahkan random parameter agar tidak terkena cache (selalu update)
-            const cacheBuster = Math.random().toString(36).substring(7);
-            const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${VIDEO_FOLDER}?cb=${cacheBuster}`;
+            // URL API GitHub yang benar untuk isi folder
+            const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${VIDEO_FOLDER}`;
             
             const response = await fetch(apiUrl);
             const files = await response.json();
 
             if (Array.isArray(files)) {
-                // Ambil semua file yang berakhiran .mp4
+                // Filter hanya file .mp4
                 videoPlaylist = files
                     .filter(file => file.name.toLowerCase().endsWith('.mp4'))
                     .map(file => file.download_url);
 
-                console.log("Video ditemukan:", videoPlaylist);
+                console.log("Video Ditemukan:", videoPlaylist.length);
 
                 if (videoPlaylist.length > 0) {
                     playVideo(0);
-                } else {
-                    console.log("Folder video kosong.");
                 }
+            } else {
+                console.error("Gagal membaca folder GitHub. Hasil bukan array:", files);
             }
         } catch (error) {
-            console.error("Gagal mengambil playlist dari GitHub:", error);
-            // Fallback manual jika API Limit tercapai
+            console.error("Error GitHub API:", error);
+            // Fallback jika API bermasalah
             videoPlaylist = ["videos/video1.mp4"];
             playVideo(0);
         }
@@ -128,12 +123,10 @@
     function playVideo(index) {
         if (index >= videoPlaylist.length) index = 0;
         currentVideoIdx = index;
-
         vPlayer.src = videoPlaylist[currentVideoIdx];
         vPlayer.load();
-        vPlayer.play().catch(e => console.log("Menunggu Start"));
+        vPlayer.play().catch(() => console.log("Menunggu Start"));
 
-        // Saat video ini berakhir, otomatis panggil video selanjutnya
         vPlayer.onended = () => {
             currentVideoIdx++;
             playVideo(currentVideoIdx);
@@ -145,8 +138,7 @@
         isStarted = true;
         document.getElementById('overlay').style.display = 'none';
         vPlayer.muted = false;
-        
-        fetchPlaylist(); // Mulai scan video saat display di klik
+        fetchPlaylist(); // Mulai scan video
         startPosterLoop();
     }
 
