@@ -1,185 +1,80 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Remote Admin - Rumah Sunat Dr. Yanda</title>
-    
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
+    <title>Admin Remote - Antrian</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; padding: 20px; }
-        .container { max-width: 600px; margin: auto; }
-        
-        /* Header */
-        .header { text-align: center; margin-bottom: 20px; }
-        .header h1 { margin: 0; color: #2c3e50; font-size: 1.5rem; }
-
-        /* Tabs UI */
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab { 
-            flex: 1; padding: 15px; border: none; border-radius: 12px; 
-            cursor: pointer; font-weight: bold; font-size: 1rem;
-            transition: 0.3s; background: #dcdde1; color: #2f3640;
-        }
-        .tab.active-sunat { background: #f1c40f; color: #2c3e50; box-shadow: 0 4px 10px rgba(241, 196, 15, 0.3); }
-        .tab.active-umum { background: #3498db; color: white; box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3); }
-
-        /* Card Antrean */
-        .card { 
-            background: white; border-radius: 15px; padding: 20px; 
-            margin-bottom: 15px; display: flex; justify-content: space-between; 
-            align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            border-left: 10px solid #bdc3c7;
-        }
-        .card.sunat { border-left-color: #f1c40f; }
-        .card.umum { border-left-color: #3498db; }
-
-        .info { display: flex; flex-direction: column; }
-        .no-antrian { font-size: 2rem; font-weight: 900; color: #2c3e50; }
-        .waktu { font-size: 0.8rem; color: #7f8c8d; }
-
-        /* Button Actions */
-        .actions { display: flex; gap: 10px; }
-        .btn { 
-            border: none; padding: 12px 18px; border-radius: 8px; 
-            cursor: pointer; font-weight: bold; color: white; transition: 0.2s;
-        }
-        .btn-panggil { background: #2ecc71; } /* Hijau */
-        .btn-panggil:hover { background: #27ae60; }
-        .btn-selesai { background: #e74c3c; } /* Merah */
-        .btn-selesai:hover { background: #c0392b; }
-        
-        .btn:active { transform: scale(0.95); }
-
-        /* Status TV */
-        #calling-bar { 
-            background: #e67e22; color: white; padding: 12px; 
-            border-radius: 10px; text-align: center; margin-bottom: 20px;
-            display: none; font-weight: bold; animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        body { font-family: sans-serif; background: #ecf0f1; padding: 20px; }
+        .container { display: flex; gap: 20px; max-width: 1000px; margin: auto; }
+        .col { flex: 1; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; align-items: center; }
+        .btn { border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; color: white; }
+        .btn-call { background: #27ae60; margin-right: 5px; }
+        .btn-done { background: #e74c3c; }
     </style>
 </head>
 <body>
-
-<div class="container">
-    <div class="header">
-        <h1>ADMIN REMOTE</h1>
-        <p style="color: #7f8c8d; font-size: 0.9rem;">Rumah Sunat Dokter Yanda</p>
+    <h2 style="text-align: center;">Remote Admin Web</h2>
+    <div class="container">
+        <div class="col">
+            <h3>Sunat (N)</h3>
+            <div id="list-sunat"></div>
+        </div>
+        <div class="col">
+            <h3>Umum (P/S)</h3>
+            <div id="list-umum"></div>
+        </div>
     </div>
 
-    <!-- Notifikasi jika TV sedang bunyi -->
-    <div id="calling-bar">
-        📢 TV SEDANG MEMANGGIL...
-        <br>
-        <button onclick="stopBell()" style="margin-top:8px; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">MATIKAN SUARA</button>
-    </div>
+    <script>
+        const firebaseConfig = { /* SAMA DENGAN DI ATAS */
+            apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
+            authDomain: "antrian-klinik-cf6cb.firebaseapp.com",
+            databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "antrian-klinik-cf6cb",
+            storageBucket: "antrian-klinik-cf6cb.firebasestorage.app",
+            messagingSenderId: "737102197117",
+            appId: "1:737102197117:web:cc4752ea0c879741e35c14"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-    <!-- Tab Sunat / Umum -->
-    <div class="tabs">
-        <button id="tabSunat" class="tab active-sunat" onclick="switchTab('sunat')">SUNAT (N)</button>
-        <button id="tabUmum" class="tab" onclick="switchTab('umum')">UMUM (P/S)</button>
-    </div>
-
-    <!-- List Antrean -->
-    <div id="list-container">
-        <p style="text-align: center; color: #95a5a6;">Memuat antrean...</p>
-    </div>
-</div>
-
-<script>
-    // 1. KONFIGURASI FIREBASE (Sesuai MainActivity.kt)
-    const firebaseConfig = {
-        databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    let currentTab = 'sunat';
-
-    // 2. MONITOR STATUS PANGGILAN
-    db.ref('antrian/is_calling').on('value', (snap) => {
-        document.getElementById('calling-bar').style.display = snap.val() ? 'block' : 'none';
-    });
-
-    // 3. FUNGSI GANTI TAB
-    function switchTab(type) {
-        currentTab = type;
-        document.getElementById('tabSunat').className = (type === 'sunat') ? 'tab active-sunat' : 'tab';
-        document.getElementById('tabUmum').className = (type === 'umum') ? 'tab active-umum' : 'tab';
-        loadAntrean();
-    }
-
-    // 4. LOAD DATA (Sync dengan antrian/antrian_list/...)
-    function loadAntrean() {
-        const path = `antrian/antrian_list/${currentTab}`;
-        db.ref(path).on('value', (snapshot) => {
-            const container = document.getElementById('list-container');
-            container.innerHTML = '';
-            let count = 0;
-
-            snapshot.forEach((child) => {
-                const data = child.val();
-                if (data.status === 'menunggu') {
-                    count++;
-                    const key = child.key;
-                    const displayNo = `${data.kode}-${String(data.nomor).padStart(2, '0')}`;
-                    const time = new Date(data.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-
-                    const div = document.createElement('div');
-                    div.className = `card ${currentTab}`;
-                    div.innerHTML = `
-                        <div class="info">
-                            <span class="no-antrian">${displayNo}</span>
-                            <span class="waktu">Masuk: ${time}</span>
-                        </div>
-                        <div class="actions">
-                            <button class="btn btn-panggil" onclick="panggil('${key}', ${data.nomor}, '${data.kode}')">PANGGIL</button>
-                            <button class="btn btn-selesai" onclick="selesai('${key}')">SELESAI</button>
-                        </div>
-                    `;
-                    container.appendChild(div);
-                }
+        function sync(path, elementId, tipe) {
+            db.ref('antrian/antrian_list/' + path).on('value', snap => {
+                const el = document.getElementById(elementId);
+                el.innerHTML = "";
+                snap.forEach(child => {
+                    const data = child.val();
+                    if (data.status === 'menunggu') {
+                        el.innerHTML += `<div class="item">
+                            <span><b>${data.kode}-${data.nomor}</b></span>
+                            <div>
+                                <button class="btn btn-call" onclick="panggil('${tipe}', ${data.nomor}, '${data.kode}')">PANGGIL</button>
+                                <button class="btn btn-done" onclick="selesai('${path}', '${child.key}')">SELESAI</button>
+                            </div>
+                        </div>`;
+                    }
+                });
             });
-
-            if (count === 0) {
-                container.innerHTML = '<div style="text-align:center; padding:50px; color:#bdc3c7;">Tidak ada antrean menunggu</div>';
-            }
-        });
-    }
-
-    // 5. FUNGSI PANGGIL (Update Display TV)
-    function panggil(key, nomor, kode) {
-        const tipeDisplay = currentTab === 'sunat' ? 'Sunat' : 'Umum';
-        const updates = {};
-        
-        // Update nomor yang tampil di TV
-        updates[`antrian/nomor_dipanggil/${tipeDisplay}`] = nomor;
-        updates[`antrian/nomor_dipanggil/kode_umum`] = kode;
-        updates['antrian/is_calling'] = true;
-        updates['antrian/tipe_panggil'] = tipeDisplay.toUpperCase();
-        
-        db.ref().update(updates);
-    }
-
-    // 6. FUNGSI SELESAI (Hapus dari list Admin)
-    function selesai(key) {
-        if(confirm("Selesaikan antrean ini?")) {
-            const path = `antrian/antrian_list/${currentTab}/${key}`;
-            db.ref(path).update({ status: 'selesai' });
         }
-    }
 
-    function stopBell() {
-        db.ref('antrian/is_calling').set(false);
-    }
+        function panggil(tipe, no, kode) {
+            db.ref('antrian/is_calling').set(true);
+            db.ref('panggilan_terbaru').set({
+                nomor: no, tipe: tipe, kode: kode, timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
+            const field = tipe === 'SUNAT' ? 'Sunat' : 'Umum';
+            db.ref('antrian/nomor_dipanggil/' + field).set(no);
+            if (tipe === 'UMUM') db.ref('antrian/nomor_dipanggil/kode_umum').set(kode);
+        }
 
-    // Jalankan pertama kali
-    loadAntrean();
-</script>
+        function selesai(path, key) {
+            db.ref('antrian/antrian_list/' + path + '/' + key + '/status').set('selesai');
+        }
 
+        sync('sunat', 'list-sunat', 'SUNAT');
+        sync('umum', 'list-umum', 'UMUM');
+    </script>
 </body>
 </html>
