@@ -2,84 +2,59 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Remote Admin - Rumah Sunat Dr. Yanda</title>
-    
-    <!-- Firebase SDK (Compatibility Mode) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #2c3e50; }
-        .container { max-width: 900px; margin: auto; }
-        h1 { text-align: center; color: #2c3e50; }
-        
-        /* Status Bell */
-        .status-box { background: #fff; padding: 15px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .btn-stop { background-color: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .btn-stop:hover { background-color: #c0392b; }
-
-        /* Tabs */
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: auto; }
+        .status-box { background: #fff; padding: 15px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-left: 5px solid #e74c3c; }
+        .btn-stop { background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab-btn { flex: 1; padding: 15px; border: none; background: #ddd; cursor: pointer; font-weight: bold; border-radius: 5px; font-size: 1rem; }
+        .tab-btn { flex: 1; padding: 15px; border: none; background: #ddd; cursor: pointer; font-weight: bold; border-radius: 5px; }
         .tab-btn.active { background: #3498db; color: white; }
-
-        /* Queue List */
-        .queue-list { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-height: 300px; }
+        .queue-list { background: white; border-radius: 10px; padding: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .queue-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; }
-        .queue-item:last-child { border-bottom: none; }
-        .no-antrian { font-size: 1.5rem; font-weight: bold; }
-        
-        .actions { display: flex; gap: 10px; }
-        .btn-call { background-color: #2ecc71; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
-        .btn-done { background-color: #3498db; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
-        .btn-call:hover { opacity: 0.8; }
-        
-        .empty-msg { text-align: center; color: #95a5a6; margin-top: 50px; }
+        .no-antrian { font-size: 1.5rem; font-weight: bold; color: #2c3e50; }
+        .btn-call { background: #2ecc71; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; margin-right: 5px; }
+        .btn-done { background: #3498db; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>REMOTE PEMANGGIL</h1>
+    <h1 style="text-align:center;">REMOTE ADMIN</h1>
 
-    <!-- Indikator Panggilan Aktif -->
     <div id="calling-status" class="status-box" style="display: none;">
-        <span style="color: #e67e22; font-weight: bold;">⚠️ Bell/Suara sedang berbunyi di TV...</span>
-        <button class="btn-stop" onclick="stopCalling()">BERHENTI PANGGIL / MATIKAN BELL</button>
+        <span>🔔 TV sedang memanggil...</span>
+        <button class="btn-stop" onclick="stopCalling()">MATIKAN BELL</button>
     </div>
 
-    <!-- Pilihan Tab -->
     <div class="tabs">
-        <button id="tab-sunat" class="tab-btn active" onclick="switchTab('sunat')">ANTRIAN SUNAT (N)</button>
-        <button id="tab-umum" class="tab-btn" onclick="switchTab('umum')">ANTRIAN UMUM (P/S)</button>
+        <button id="tab-sunat" class="tab-btn active" onclick="switchTab('sunat')">SUNAT (N)</button>
+        <button id="tab-umum" class="tab-btn" onclick="switchTab('umum')">UMUM (P/S)</button>
     </div>
 
-    <!-- Daftar Antrian -->
     <div id="list-container" class="queue-list">
-        <!-- Data akan muncul di sini secara otomatis -->
+        <div style="text-align:center; padding:20px; color:#95a5a6;">Memuat data...</div>
     </div>
 </div>
 
 <script>
-    // 1. CONFIGURASI FIREBASE (WAJIB DISAMAKAN DENGAN ANDROID)
     const firebaseConfig = {
         apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
         databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    let currentTab = 'sunat'; // 'sunat' atau 'umum'
+    let currentTab = 'sunat';
 
-    // 2. DETEKSI STATUS IS_CALLING (Agar Remote tahu kalau TV sedang bunyi)
+    // Pantau status bell di TV
     db.ref('antrian/is_calling').on('value', (snap) => {
-        const isCalling = snap.val();
-        document.getElementById('calling-status').style.display = isCalling ? 'flex' : 'none';
+        document.getElementById('calling-status').style.display = snap.val() ? 'flex' : 'none';
     });
 
-    // 3. FUNGSI SWITCH TAB
     function switchTab(tab) {
         currentTab = tab;
         document.getElementById('tab-sunat').classList.toggle('active', tab === 'sunat');
@@ -87,110 +62,57 @@
         loadQueue();
     }
 
-    // 4. LOAD DATA ANTRIAN LIST DARI FIREBASE
     function loadQueue() {
         const path = currentTab === 'sunat' ? 'antrian_list/sunat' : 'antrian_list/umum';
-        const listContainer = document.getElementById('list-container');
-        
         db.ref(path).on('value', (snap) => {
-            listContainer.innerHTML = '';
+            const container = document.getElementById('list-container');
+            container.innerHTML = '';
             let hasData = false;
 
-            const items = [];
             snap.forEach((child) => {
                 const data = child.val();
                 if (data.status === 'menunggu') {
-                    items.push({ key: child.key, ...data });
+                    hasData = true;
+                    const displayNo = currentTab === 'sunat' ? `N-${String(data.nomor).padStart(2, '0')}` : `${data.kode}-${String(data.nomor).padStart(2, '0')}`;
+                    
+                    const div = document.createElement('div');
+                    div.className = 'queue-item';
+                    div.innerHTML = `
+                        <div class="no-antrian">${displayNo}</div>
+                        <div>
+                            <button class="btn-call" onclick="panggil(${data.nomor}, '${data.kode || ''}')">📢 PANGGIL</button>
+                            <button class="btn-done" onclick="selesai('${child.key}')">✅ SELESAI</button>
+                        </div>
+                    `;
+                    container.appendChild(div);
                 }
             });
-
-            // Urutkan berdasarkan waktu
-            items.sort((a, b) => a.timestamp - b.timestamp);
-
-            items.forEach((item) => {
-                hasData = true;
-                const displayNo = currentTab === 'sunat' ? `N-${String(item.nomor).padStart(2, '0')}` : `${item.kode}-${String(item.nomor).padStart(2, '0')}`;
-                
-                const row = document.createElement('div');
-                row.className = 'queue-item';
-                row.innerHTML = `
-                    <div class="no-antrian">${displayNo}</div>
-                    <div class="actions">
-                        <button class="btn-call" onclick="panggil('${item.key}', ${item.nomor}, '${item.kode || ''}')">📢 PANGGIL</button>
-                        <button class="btn-done" onclick="selesai('${item.key}')">✅ SELESAI</button>
-                    </div>
-                `;
-                listContainer.appendChild(row);
-            });
-
-            if (!hasData) {
-                listContainer.innerHTML = `<div class="empty-msg">Tidak ada antrian menunggu.</div>`;
-            }
+            if (!hasData) container.innerHTML = '<div style="text-align:center; padding:20px; color:#95a5a6;">Daftar tunggu kosong.</div>';
         });
     }
 
-    // ... (Bagian atas kode tetap sama) ...
-
-    // 5. LOGIKA PANGGIL (SINKRON DENGAN TV & ANDROID)
-    function panggil(key, nomor, kode) {
+    function panggil(nomor, kode) {
         const tipe = currentTab === 'sunat' ? 'SUNAT' : 'UMUM';
-        
         const updates = {};
-        // Trigger suara bel di TV
-        updates['antrian/is_calling'] = true; 
+        updates['antrian/is_calling'] = true;
         updates['antrian/tipe_panggil'] = tipe;
+        updates[`antrian/nomor_dipanggil/${currentTab === 'sunat' ? 'Sunat' : 'Umum'}`] = nomor;
+        if (kode) updates['antrian/kode_umum'] = kode;
         
-        // UPDATE PATH YANG BENAR (Sesuai MainActivity.kt)
-        if (tipe === 'SUNAT') {
-            updates['antrian/nomor_dipanggil/Sunat'] = nomor;
-        } else {
-            updates['antrian/nomor_dipanggil/Umum'] = nomor;
-            // Jika TV butuh info kode P/S dari remote:
-            updates['antrian/kode_umum'] = kode; 
-        }
-
-        // Jalankan Update ke Firebase
-        db.ref().update(updates).then(() => {
-            console.log("Berhasil memanggil nomor: " + nomor);
-        });
+        db.ref().update(updates);
     }
 
-    // 6. LOGIKA SELESAI
     function selesai(key) {
-        // Matikan suara TV dulu jika masih bunyi
         stopCalling();
-        
-        // Ubah status di list agar hilang dari daftar tunggu
-        const path = currentTab === 'sunat' ? 'antrian_list/sunat' : 'antrian_list/umum';
-        db.ref(`${path}/${key}`).update({
-            status: 'selesai'
-        });
-    }
-
-    // 7. MATIKAN BELL (Sesuai trigger di index.html)
-    function stopCalling() {
-        db.ref('antrian/is_calling').set(false);
-    }
-
-// ... (Bagian bawah kode tetap sama) ...
-    }
-
-    // 6. LOGIKA SELESAI (HAPUS DARI LIST)
-    function selesai(key) {
         const path = currentTab === 'sunat' ? 'antrian_list/sunat' : 'antrian_list/umum';
         db.ref(`${path}/${key}/status`).set('selesai');
     }
 
-    // 7. MATIKAN BELL
     function stopCalling() {
         db.ref('antrian/is_calling').set(false);
-        db.ref('antrian/tipe_panggil').set('');
     }
 
-    // Inisialisasi awal
     loadQueue();
-
 </script>
-
 </body>
 </html>
