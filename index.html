@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
-<head>
-    <meta charset="UTF-8">
+<head>    <meta charset="UTF-8">
     <title>Display Antrian - Rumah Sunat Dokter Yanda</title>
     <!-- Firebase SDK Legacy -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -21,14 +20,46 @@
         .blink { animation: blinker 1s linear infinite; transform: scale(1.1); color: #e74c3c !important; }
         @keyframes blinker { 50% { opacity: 0; } }
 
-        /* TENGAH: Bingkai Video Fit 9:16 */
-        .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; border-left: 2px solid #ddd; border-right: 2px solid #ddd; }
-        video { width: 100%; height: 100%; object-fit: contain; background: black; }
+        /* TENGAH: Video Tanpa Bingkai Hitam */
+        .center-video { 
+            width: 40%; 
+            background: #000; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            border-left: 2px solid #ddd; 
+            border-right: 2px solid #ddd; 
+            overflow: hidden;
+        }
+        video { 
+            width: 100%; 
+            height: 100%; 
+            /* object-fit: cover akan menghilangkan bingkai hitam dengan mengisi seluruh area */
+            object-fit: cover; 
+            background: black; 
+        }
 
         /* Sidebar Kanan */
         .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; }
-        .poster-container { width: 95%; height: 70vh; position: relative; overflow: hidden; border-radius: 15px; background: #000; box-shadow: 0 15px 35px rgba(0,0,0,0.2); }
-        .poster-img { width: 100%; height: 100%; object-fit: contain; position: absolute; top: 0; left: 0; display: none; }
+        .poster-container { 
+            width: 95%; 
+            height: 70vh; 
+            position: relative; 
+            overflow: hidden; 
+            border-radius: 15px; 
+            background: #000; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2); 
+        }
+        .poster-img { 
+            width: 100%; 
+            height: 100%; 
+            /* object-fit: cover agar poster memenuhi bingkai tanpa sisa hitam */
+            object-fit: cover; 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            display: none; 
+        }
         .poster-img.active { display: block; }
 
         #clock { font-size: 3.5vw; font-weight: bold; color: #2c3e50; margin-top: auto; }
@@ -64,15 +95,14 @@
 
     <div class="sidebar-right">
         <div class="poster-container" id="posterList">
-            <img src="poster/poster1.jpg" class="poster-img active" onerror="this.src='https://via.placeholder.com/400x600?text=Poster+1'">
-            <img src="poster/poster2.jpg" class="poster-img" onerror="this.src='https://via.placeholder.com/400x600?text=Poster+2'">
+            <img src="poster/poster1.jpg" class="poster-img active">
+            <img src="poster/poster2.jpg" class="poster-img">
         </div>
         <div id="clock">00:00:00</div>
         <p class="footer-name">Rumah Sunat Dokter Yanda</p>
     </div>
 
 <script>
-    // --- KONFIGURASI GITHUB (PASTIKAN REPO PUBLIC) ---
     const GITHUB_USER = "praktekdoktereryanda-png"; 
     const GITHUB_REPO = "Antrian"; 
     const VIDEO_FOLDER = "videos";
@@ -95,7 +125,6 @@
     let currentVideoIdx = 0;
     let currentPosterIdx = 0;
 
-    // 1. FUNGSI AUTO SCAN VIDEO
     async function fetchPlaylist() {
         try {
             const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${VIDEO_FOLDER}`;
@@ -107,26 +136,20 @@
                     .filter(file => file.name.toLowerCase().endsWith('.mp4'))
                     .map(file => file.download_url);
 
-                console.log("Video ditemukan di folder:", videoPlaylist.length);
-
                 if (videoPlaylist.length > 0) {
                     playVideo(0);
                 }
             }
         } catch (error) {
             console.error("Error GitHub API:", error);
-            // Fallback jika API limit atau error
             videoPlaylist = ["videos/video1.mp4"];
             playVideo(0);
         }
     }
 
-    // 2. FUNGSI PLAYLIST (MEMUTAR SEMUA VIDEO BERGANTIAN)
     function playVideo(index) {
         if (index >= videoPlaylist.length) index = 0;
         currentVideoIdx = index;
-        
-        console.log("Memutar video ke-" + (currentVideoIdx + 1));
         vPlayer.src = videoPlaylist[currentVideoIdx];
         vPlayer.load();
         vPlayer.play().catch(e => console.log("Playback error"));
@@ -137,21 +160,17 @@
         };
     }
 
-    // 3. FUNGSI START (DIPICU SAAT KLIK PERTAMA)
     function startDisplay() {
         if (isStarted) return;
         isStarted = true;
-        
-        // Sembunyikan Overlay
         document.getElementById('overlay').style.display = 'none';
         
-        // Aktifkan Fullscreen
         const elem = document.documentElement;
         if (elem.requestFullscreen) { elem.requestFullscreen(); }
         else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); }
 
         vPlayer.muted = false;
-        fetchPlaylist(); // Mulai scan video
+        fetchPlaylist();
         startPosterLoop();
     }
 
@@ -169,7 +188,6 @@
         document.getElementById("clock").innerText = new Date().toLocaleTimeString("id-ID");
     }, 1000);
 
-    // FIREBASE SYNC
     db.ref('antrian').on('value', (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
