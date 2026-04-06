@@ -8,63 +8,27 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
+        /* UI TETAP SAMA - TIDAK BERUBAH */
         body { margin: 0; padding: 0; background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; width: 100vw; overflow: hidden; }
-        
-        /* Sidebar Kiri */
         .sidebar-left { width: 30%; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 20px; background: #fff; border-right: 2px solid #ddd; }
         .card { background: #fff; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #eee; border-top: 15px solid #f1c40f; }
         .card-umum { border-top: 15px solid #3498db; }
         .card h2 { margin: 0; font-size: 2vw; color: #34495e; border-bottom: 5px solid #f1c40f; display: inline-block; text-transform: uppercase; }
         .card-umum h2 { border-bottom: 5px solid #3498db; }
         .num { font-size: 8.5vw; font-weight: bold; margin: 5px 0; color: #2c3e50; }
-        
         .blink { animation: blinker 1s linear infinite; transform: scale(1.1); color: #e74c3c !important; }
         @keyframes blinker { 50% { opacity: 0; } }
-
-        /* TENGAH: Bingkai Video Optimized for 9:16 */
-        .center-video { 
-            width: 40%; 
-            background: #000; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            border-left: 2px solid #ddd; 
-            border-right: 2px solid #ddd;
-            overflow: hidden;
-        }
-        video { 
-            width: 100%; 
-            height: 100%; 
-            /* contain memastikan video 9:16 muat sempurna di dalam bingkai tanpa terpotong */
-            object-fit: contain; 
-            background: #000;
-        }
-
-        /* Sidebar Kanan */
+        
+        /* Bingkai Video Fit 9:16 */
+        .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; border-left: 2px solid #ddd; border-right: 2px solid #ddd; }
+        video { width: 100%; height: 100%; object-fit: contain; background: black; }
+        
         .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; }
-        .poster-container { 
-            width: 95%; 
-            height: 70vh; 
-            position: relative; 
-            overflow: hidden; 
-            border-radius: 15px; 
-            background: #000; 
-            box-shadow: 0 15px 35px rgba(0,0,0,0.2); 
-        }
-        .poster-img { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: contain; /* Poster juga dibuat contain agar tidak terpotong */
-            position: absolute; 
-            top: 0; 
-            left: 0; 
-            display: none; 
-        }
+        .poster-container { width: 95%; height: 70vh; position: relative; overflow: hidden; border-radius: 15px; background: #000; box-shadow: 0 15px 35px rgba(0,0,0,0.2); }
+        .poster-img { width: 100%; height: 100%; object-fit: contain; position: absolute; top: 0; left: 0; display: none; }
         .poster-img.active { display: block; }
-
         #clock { font-size: 3.5vw; font-weight: bold; color: #2c3e50; margin-top: auto; }
         .footer-name { font-weight: bold; color: #16a085; font-size: 1.2vw; margin: 10px 0; }
-
         #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; cursor: pointer; text-align: center; }
     </style>
 </head>
@@ -103,18 +67,10 @@
     </div>
 
 <script>
-    // ==========================================
-    // DAFTAR PLAYLIST VIDEO (9:16 atau 16:9)
-    // ==========================================
-    const myVideos = [
-        "videos/video1.mp4",
-        "videos/video2.mp4"
-        "videos/video3.mp4"
-        "videos/video4.mp4"
-        "videos/video5.mp4"
-        "videos/video6.mp4"
-        "videos/video7.mp4"
-    ];
+    // --- KONFIGURASI AUTO SCAN GITHUB ---
+    const GITHUB_USER = "praktekdokteryanda-png"; 
+    const GITHUB_REPO = "Antrian";
+    const VIDEO_FOLDER = "videos";
 
     const firebaseConfig = {
         apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
@@ -130,29 +86,58 @@
     const umumNum = document.getElementById('display-umum');
 
     let isStarted = false;
+    let videoPlaylist = [];
     let currentVideoIdx = 0;
     let currentPosterIdx = 0;
+
+    // 1. LOGIKA SELALU UPDATE MEMBACA FOLDER VIDEO
+    async function fetchVideoPlaylist() {
+        try {
+            // Memanggil API GitHub untuk membaca isi folder 'videos'
+            const response = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${VIDEO_FOLDER}`);
+            const files = await response.json();
+
+            // Filter hanya file yang berakhiran .mp4
+            videoPlaylist = files
+                .filter(file => file.name.toLowerCase().endsWith('.mp4'))
+                .map(file => file.download_url); // Mengambil link download mentah
+
+            console.log("Video ditemukan:", videoPlaylist.length);
+            
+            if (videoPlaylist.length > 0) {
+                playVideo(0);
+            }
+        } catch (error) {
+            console.error("Gagal membaca folder videos. Pastikan Repo Public!", error);
+            // Fallback jika API gagal (opsional)
+            videoPlaylist = ["videos/video1.mp4"];
+            playVideo(0);
+        }
+    }
+
+    function playVideo(index) {
+        if (index >= videoPlaylist.length) index = 0;
+        currentVideoIdx = index;
+
+        vPlayer.src = videoPlaylist[currentVideoIdx];
+        vPlayer.load();
+        vPlayer.play().catch(e => console.log("Menunggu interaksi user..."));
+
+        // Saat video selesai, putar yang berikutnya
+        vPlayer.onended = () => {
+            currentVideoIdx++;
+            playVideo(currentVideoIdx);
+        };
+    }
 
     function startDisplay() {
         if (isStarted) return;
         isStarted = true;
         document.getElementById('overlay').style.display = 'none';
         vPlayer.muted = false;
-        playVideoPlaylist(0); 
+        
+        fetchVideoPlaylist(); // Panggil fungsi auto-scan
         startPosterLoop();
-    }
-
-    function playVideoPlaylist(index) {
-        if (index >= myVideos.length) index = 0;
-        currentVideoIdx = index;
-        vPlayer.src = myVideos[currentVideoIdx];
-        vPlayer.load();
-        vPlayer.play().catch(e => console.log("Video Play Error"));
-
-        vPlayer.onended = function() {
-            currentVideoIdx++;
-            playVideoPlaylist(currentVideoIdx);
-        };
     }
 
     function startPosterLoop() {
@@ -169,16 +154,15 @@
         document.getElementById("clock").innerText = new Date().toLocaleTimeString("id-ID");
     }, 1000);
 
+    // FIREBASE LISTENER
     db.ref('antrian').on('value', (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
-
         const jam = new Date().getHours();
         const autoKode = jam < 12 ? "P" : "S";
         const kUmum = data.kode_umum || autoKode;
         const sVal = (data.Sunat || 0).toString().padStart(2, '0');
         const uVal = (data.Umum || 0).toString().padStart(2, '0');
-
         sunatNum.innerText = `N-${sVal}`;
         umumNum.innerText = `${kUmum}-${uVal}`;
 
