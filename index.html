@@ -1,81 +1,36 @@
 <!DOCTYPE html>
 <html lang="id">
-<head>    <meta charset="UTF-8">
+<head>
+    <meta charset="UTF-8">
     <title>Display Antrian - Rumah Sunat Dokter Yanda</title>
-    <!-- Firebase SDK Legacy -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
         body { margin: 0; padding: 0; background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; width: 100vw; overflow: hidden; }
-        
-        /* Sidebar Kiri */
         .sidebar-left { width: 30%; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 20px; background: #fff; border-right: 2px solid #ddd; }
-        .card { background: #fff; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #eee; border-top: 15px solid #f1c40f; }
+        .card { background: #fff; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-top: 15px solid #f1c40f; }
         .card-umum { border-top: 15px solid #3498db; }
-        .card h2 { margin: 0; font-size: 2vw; color: #34495e; border-bottom: 5px solid #f1c40f; display: inline-block; text-transform: uppercase; }
+        .card h2 { margin: 0; font-size: 2vw; color: #34495e; border-bottom: 5px solid #f1c40f; display: inline-block; }
         .card-umum h2 { border-bottom: 5px solid #3498db; }
         .num { font-size: 8.5vw; font-weight: bold; margin: 5px 0; color: #2c3e50; }
-        
-        .blink { animation: blinker 1s linear infinite; transform: scale(1.1); color: #e74c3c !important; }
+        .blink { animation: blinker 1s linear infinite; color: #e74c3c !important; }
         @keyframes blinker { 50% { opacity: 0; } }
 
-        /* TENGAH: Video Tanpa Bingkai Hitam */
-        .center-video { 
-            width: 40%; 
-            background: #000; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            border-left: 2px solid #ddd; 
-            border-right: 2px solid #ddd; 
-            overflow: hidden;
-        }
-        video { 
-            width: 100%; 
-            height: 100%; 
-            /* object-fit: cover akan menghilangkan bingkai hitam dengan mengisi seluruh area */
-            object-fit: cover; 
-            background: black; 
-        }
+        .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        video { width: 100%; height: 100%; object-fit: cover; background: black; }
 
-        /* Sidebar Kanan */
         .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; }
-        .poster-container { 
-            width: 95%; 
-            height: 70vh; 
-            position: relative; 
-            overflow: hidden; 
-            border-radius: 15px; 
-            background: #000; 
-            box-shadow: 0 15px 35px rgba(0,0,0,0.2); 
-        }
-        .poster-img { 
-            width: 100%; 
-            height: 100%; 
-            /* object-fit: cover agar poster memenuhi bingkai tanpa sisa hitam */
-            object-fit: cover; 
-            position: absolute; 
-            top: 0; 
-            left: 0; 
-            display: none; 
-        }
+        .poster-container { width: 95%; height: 70vh; position: relative; overflow: hidden; border-radius: 15px; background: #000; }
+        .poster-img { width: 100%; height: 100%; object-fit: cover; position: absolute; display: none; }
         .poster-img.active { display: block; }
-
         #clock { font-size: 3.5vw; font-weight: bold; color: #2c3e50; margin-top: auto; }
-        .footer-name { font-weight: bold; color: #16a085; font-size: 1.2vw; margin: 10px 0; }
-
-        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; cursor: pointer; text-align: center; }
+        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); color: white; display: flex; align-items: center; justify-content: center; z-index: 100; cursor: pointer; }
     </style>
 </head>
-
 <body onclick="startDisplay()">
 
-    <div id="overlay">
-        <h1>SISTEM ANTRIAN KLINIK</h1>
-        <p>KLIK LAYAR UNTUK MEMULAI (FULLSCREEN)</p>
-    </div>
-
+    <div id="overlay"><h1>KLIK UNTUK MULAI DISPLAY TV</h1></div>
     <audio id="bellSound" src="audio/bell.mp3" preload="auto"></audio>
 
     <div class="sidebar-left">
@@ -85,7 +40,7 @@
         </div>
         <div class="card card-umum">
             <h2>PRAKTEK UMUM</h2>
-            <div class="num" id="display-umum" style="color: #3498db;">S-00</div>
+            <div class="num" id="display-umum">S-00</div>
         </div>
     </div>
 
@@ -99,14 +54,12 @@
             <img src="poster/poster2.jpg" class="poster-img">
         </div>
         <div id="clock">00:00:00</div>
-        <p class="footer-name">Rumah Sunat Dokter Yanda</p>
     </div>
 
 <script>
     const GITHUB_USER = "praktekdoktereryanda-png"; 
     const GITHUB_REPO = "Antrian"; 
-    const VIDEO_FOLDER = "videos";
-
+    
     const firebaseConfig = {
         apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
         databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app"
@@ -117,119 +70,80 @@
 
     const vPlayer = document.getElementById('vPlayer');
     const bell = document.getElementById('bellSound');
-    const sunatNum = document.getElementById('display-sunat');
-    const umumNum = document.getElementById('display-umum');
-
-    let isStarted = false;
     let videoPlaylist = [];
     let currentVideoIdx = 0;
-    let currentPosterIdx = 0;
+    let isStarted = false;
+
+    // Sinkronisasi dengan Path Android
+    db.ref('antrian').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
+
+        // Ambil nomor yang sedang dipanggil (dipanggil oleh Admin)
+        const sDipanggil = (data.nomor_dipanggil?.Sunat || 0).toString().padStart(2, '0');
+        const uDipanggil = (data.nomor_dipanggil?.Umum || 0).toString().padStart(2, '0');
+        
+        const jam = new Date().getHours();
+        const kodeUmum = jam < 12 ? "P" : "S";
+
+        document.getElementById('display-sunat').innerText = `N-${sDipanggil}`;
+        document.getElementById('display-umum').innerText = `${kodeUmum}-${uDipanggil}`;
+
+        // Fitur Panggilan (Detect is_calling)
+        if (data.is_calling === true) {
+            vPlayer.pause();
+            const target = data.tipe_panggil === "SUNAT" ? "display-sunat" : "display-umum";
+            document.getElementById(target).classList.add('blink');
+            
+            panggilSuara(data.tipe_panggil, data.tipe_panggil === "SUNAT" ? sDipanggil : uDipanggil, kodeUmum);
+        } else {
+            document.getElementById('display-sunat').classList.remove('blink');
+            document.getElementById('display-umum').classList.remove('blink');
+            if(isStarted) vPlayer.play().catch(()=>{});
+        }
+    });
 
     async function fetchPlaylist() {
+        const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/videos`;
         try {
-            const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${VIDEO_FOLDER}`;
-            const response = await fetch(apiUrl);
-            const files = await response.json();
-
-            if (Array.isArray(files)) {
-                videoPlaylist = files
-                    .filter(file => file.name.toLowerCase().endsWith('.mp4'))
-                    .map(file => file.download_url);
-
-                if (videoPlaylist.length > 0) {
-                    playVideo(0);
-                }
-            }
-        } catch (error) {
-            console.error("Error GitHub API:", error);
-            videoPlaylist = ["videos/video1.mp4"];
-            playVideo(0);
-        }
+            const res = await fetch(apiUrl);
+            const files = await res.json();
+            videoPlaylist = files.filter(f => f.name.endsWith('.mp4')).map(f => f.download_url);
+            if (videoPlaylist.length > 0) playVideo(0);
+        } catch (e) { console.error("GitHub Error"); }
     }
 
     function playVideo(index) {
         if (index >= videoPlaylist.length) index = 0;
-        currentVideoIdx = index;
-        vPlayer.src = videoPlaylist[currentVideoIdx];
+        vPlayer.src = videoPlaylist[index];
         vPlayer.load();
-        vPlayer.play().catch(e => console.log("Playback error"));
-
-        vPlayer.onended = () => {
-            currentVideoIdx++;
-            playVideo(currentVideoIdx);
-        };
+        vPlayer.play();
+        vPlayer.onended = () => playVideo(index + 1);
     }
 
     function startDisplay() {
         if (isStarted) return;
         isStarted = true;
         document.getElementById('overlay').style.display = 'none';
-        
-        const elem = document.documentElement;
-        if (elem.requestFullscreen) { elem.requestFullscreen(); }
-        else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); }
-
+        document.documentElement.requestFullscreen().catch(()=>{});
         vPlayer.muted = false;
         fetchPlaylist();
-        startPosterLoop();
-    }
-
-    function startPosterLoop() {
-        const posters = document.querySelectorAll('.poster-img');
-        if(posters.length <= 1) return;
         setInterval(() => {
-            posters[currentPosterIdx].classList.remove('active');
-            currentPosterIdx = (currentPosterIdx + 1) % posters.length;
-            posters[currentPosterIdx].classList.add('active');
-        }, 8000); 
+            document.getElementById("clock").innerText = new Date().toLocaleTimeString("id-ID");
+        }, 1000);
     }
 
-    setInterval(() => {
-        document.getElementById("clock").innerText = new Date().toLocaleTimeString("id-ID");
-    }, 1000);
-
-    db.ref('antrian').on('value', (snapshot) => {
-        const data = snapshot.val();
-        if (!data) return;
-        
-        const jam = new Date().getHours();
-        const autoKode = jam < 12 ? "P" : "S";
-        const kUmum = data.kode_umum || autoKode;
-        const sVal = (data.Sunat || 0).toString().padStart(2, '0');
-        const uVal = (data.Umum || 0).toString().padStart(2, '0');
-
-        sunatNum.innerText = `N-${sVal}`;
-        umumNum.innerText = `${kUmum}-${uVal}`;
-
-        if (data.is_calling === true) {
-            vPlayer.pause(); 
-            const targetId = (data.tipe_panggil === "SUNAT") ? sunatNum : umumNum;
-            sunatNum.classList.remove('blink');
-            umumNum.classList.remove('blink');
-            targetId.classList.add('blink');
-            panggilSuara(data.tipe_panggil, sVal, uVal, kUmum);
-        } else {
-            sunatNum.classList.remove('blink');
-            umumNum.classList.remove('blink');
-            if (isStarted) vPlayer.play().catch(() => {});
-        }
-    });
-
-    function panggilSuara(tipe, s, u, k) {
+    function panggilSuara(tipe, nomor, kode) {
         window.speechSynthesis.cancel();
-        bell.pause();
         bell.currentTime = 0;
         bell.play().then(() => {
             setTimeout(() => {
-                let teks = (tipe === "SUNAT") ? 
-                    `Nomor antrian, N, ${s.split('').join(' ')}, Silahkan menuju ruang periksa sunat` :
-                    `Nomor antrian, ${k}, ${u.split('').join(' ')}, Silahkan menuju ruang periksa umum`;
-                const msg = new SpeechSynthesisUtterance(teks);
+                let text = tipe === "SUNAT" ? `Nomor antrian N ${nomor}, silahkan menuju ruang periksa sunat` : `Nomor antrian ${kode} ${nomor}, silahkan menuju ruang periksa umum`;
+                let msg = new SpeechSynthesisUtterance(text);
                 msg.lang = 'id-ID';
-                msg.rate = 0.8;
                 window.speechSynthesis.speak(msg);
-            }, 2500); 
-        }).catch(e => console.log("Audio diblokir"));
+            }, 2500);
+        });
     }
 </script>
 </body>
