@@ -3,102 +3,224 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kios Antrian - Rumah Sunat Dokter Yanda</title>
+    <title>Kiosk Antrean - Rumah Sunat Dr. Yanda</title>
+    
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 500px; }
-        .btn-group { display: flex; flex-direction: column; gap: 20px; margin-top: 20px; }
-        .btn { padding: 25px; font-size: 1.5rem; font-weight: bold; border: none; border-radius: 15px; cursor: pointer; color: white; transition: 0.2s; }
-        .btn-sunat { background: #f1c40f; color: #2c3e50; }
-        .btn-umum { background: #3498db; }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #2c3e50; /* Warna fallback */
+            overflow: hidden;
+            color: white;
+        }
+
+        /* Background Video (Sync with Android) */
+        #bg-video {
+            position: fixed;
+            right: 0;
+            bottom: 0;
+            min-width: 100%;
+            min-height: 100%;
+            object-fit: cover; /* Hilangkan bingkai hitam */
+            z-index: -2;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: -1;
+        }
+
+        .container {
+            text-align: center;
+            width: 90%;
+            max-width: 800px;
+        }
+
+        h1 { font-size: 3.5rem; margin-bottom: 5px; font-weight: 900; }
+        p { font-size: 1.5rem; margin-bottom: 50px; opacity: 0.8; }
+
+        .button-group {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 50px 20px;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+
         .btn:active { transform: scale(0.95); }
-        
-        /* Modal Tiket */
-        #resultModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; z-index: 100; }
-        .modal-content { background: white; padding: 40px; border-radius: 20px; text-align: center; width: 80%; }
-        .ticket-num { font-size: 5rem; font-weight: bold; margin: 20px 0; color: #2c3e50; }
-        .btn-close { background: #e74c3c; color: white; padding: 10px 20px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
+
+        .btn-sunat { background-color: #f1c40f; color: #2c3e50; } /* Kuning */
+        .btn-umum { background-color: #3498db; color: white; }    /* Biru */
+
+        .btn h2 { font-size: 2.5rem; margin: 0; font-weight: 800; }
+        .btn span { font-size: 1.2rem; font-weight: bold; opacity: 0.7; }
+
+        /* Status Print (Opsional untuk Web) */
+        #status {
+            margin-top: 30px;
+            font-weight: bold;
+            padding: 10px 20px;
+            border-radius: 10px;
+            display: none;
+        }
     </style>
 </head>
 <body>
 
+    <video id="bg-video" autoplay muted loop></video>
+    <div class="overlay"></div>
+
     <div class="container">
         <h1>AMBIL ANTRIAN</h1>
         <p>Rumah Sunat Dokter Yanda</p>
-        <div class="btn-group">
-            <button class="btn btn-sunat" onclick="ambilAntrian('Sunat', 'N')">ANTRIAN SUNAT</button>
-            <button class="btn btn-umum" onclick="ambilAntrian('Umum', 'S')">PRAKTEK UMUM</button>
+
+        <div class="button-group">
+            <!-- Tombol Sunat -->
+            <button class="btn btn-sunat" onclick="ambilAntrian('sunat')">
+                <h2>SUNAT</h2>
+                <span>KODE: N</span>
+            </button>
+
+            <!-- Tombol Umum -->
+            <button class="btn btn-umum" onclick="ambilAntrian('umum')">
+                <h2>UMUM</h2>
+                <span>KODE: P / S</span>
+            </button>
         </div>
+
+        <div id="status"></div>
     </div>
 
-    <div id="resultModal">
-        <div class="modal-content">
-            <h2 id="modalTitle">NOMOR ANDA</h2>
-            <div class="ticket-num" id="modalNum">00</div>
-            <p id="modalDate"></p>
-            <button class="btn-close" onclick="closeModal()">TUTUP</button>
-        </div>
-    </div>
+    <script>
+        // CONFIG GITHUB PLAYLIST
+        const GITHUB_USER = "praktekdoktereryanda-png";
+        const GITHUB_REPO = "Antrian";
 
-<script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
-        databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app"
-    };
+        // CONFIG FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
+            databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    function ambilAntrian(tipe, kodeDefault) {
-        const today = new Date().toLocaleDateString('en-GB'); // Format: DD/MM/YYYY
-        const rootRef = db.ref('antrian');
-
-        // Gunakan Transaction pada root 'antrian' agar pengecekan tanggal & angka sinkron
-        rootRef.transaction((currentData) => {
-            if (currentData === null) return { Sunat: 1, Umum: 1, last_reset: today };
-
-            // FITUR RESET OTOMATIS: Jika tanggal di database berbeda dengan hari ini
-            if (currentData.last_reset !== today) {
-                currentData.Sunat = 0;
-                currentData.Umum = 0;
-                currentData.last_reset = today;
-                currentData.is_calling = false; // Reset status panggil juga
-            }
-
-            // Tambah nomor sesuai tombol yang diklik
-            currentData[tipe] = (currentData[tipe] || 0) + 1;
-            
-            return currentData;
-        }, (error, committed, snapshot) => {
-            if (committed) {
-                const data = snapshot.val();
-                const nomorBaru = data[tipe];
-                tampilkanTiket(tipe, kodeDefault, nomorBaru);
-            }
-        });
-    }
-
-    function tampilkanTiket(tipe, kode, nomor) {
-        const formattedNum = nomor.toString().padStart(2, '0');
-        let kodeFinal = kode;
-        
-        if (tipe === "Umum") {
-            const jam = new Date().getHours();
-            kodeFinal = jam < 12 ? "P" : "S";
+        // 1. LOAD VIDEO PLAYLIST DARI GITHUB
+        async function loadGithubPlaylist() {
+            try {
+                const response = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/videos`);
+                const files = await response.json();
+                const videos = files.filter(f => f.name.endsWith('.mp4')).map(f => f.download_url);
+                
+                if (videos.length > 0) {
+                    const videoEl = document.getElementById('bg-video');
+                    let currentVid = 0;
+                    
+                    videoEl.src = videos[currentVid];
+                    videoEl.onended = () => {
+                        currentVid = (currentVid + 1) % videos.length;
+                        videoEl.src = videos[currentVid];
+                        videoEl.play();
+                    };
+                }
+            } catch (e) { console.error("Gagal muat video:", e); }
         }
 
-        document.getElementById('modalTitle').innerText = "ANTRIAN " + tipe.toUpperCase();
-        document.getElementById('modalNum').innerText = kodeFinal + "-" + formattedNum;
-        document.getElementById('modalDate').innerText = new Date().toLocaleString('id-ID');
-        document.getElementById('resultModal').style.display = 'flex';
-    }
+        // 2. LOGIKA AMBIL ANTRIAN (Sama dengan Android)
+        async function ambilAntrian(tipe) {
+            // Cek Reset Harian dulu
+            const today = new Date().toISOString().split('T')[0];
+            const snapshot = await db.ref('metadata/last_reset_date').get();
+            
+            if (snapshot.val() !== today) {
+                await resetHarian(today);
+            }
 
-    function closeModal() {
-        document.getElementById('resultModal').style.display = 'none';
-    }
-</script>
+            if (tipe === 'sunat') {
+                prosesTransaksi('N', 'sunat');
+            } else {
+                const jam = new Date().getHours();
+                const kode = (jam < 12) ? 'P' : 'S';
+                prosesTransaksi(kode, 'umum');
+            }
+        }
+
+        function prosesTransaksi(kode, path) {
+            const counterRef = db.ref(`counter/${kode}`);
+            
+            counterRef.transaction((currentValue) => {
+                return (currentValue || 0) + 1;
+            }, (error, committed, snapshot) => {
+                if (committed) {
+                    const nomor = snapshot.val();
+                    const formatted = `${kode}-${nomor.toString().padStart(2, '0')}`;
+                    
+                    // Update nomor terakhir agar TV tahu ada pasien baru (tapi tidak bunyi)
+                    const lastPath = (path === 'sunat') ? 'Sunat' : 'Umum';
+                    db.ref(`antrian/nomor_terakhir/${lastPath}`).set(nomor);
+
+                    // Tambah ke daftar antrian list
+                    db.ref(`antrian_list/${path}`).push({
+                        nomor: nomor,
+                        kode: kode,
+                        status: 'menunggu',
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    });
+
+                    showSuccess(formatted);
+                }
+            });
+        }
+
+        function resetHarian(todayDate) {
+            return db.ref().update({
+                "counter/N": 0, "counter/P": 0, "counter/S": 0,
+                "antrian/nomor_terakhir/Sunat": 0, "antrian/nomor_terakhir/Umum": 0,
+                "antrian/nomor_dipanggil/Sunat": 0, "antrian/nomor_dipanggil/Umum": 0,
+                "antrian_list/sunat": null, "antrian_list/umum": null,
+                "metadata/last_reset_date": todayDate,
+                "antrian/is_calling": false
+            });
+        }
+
+        function showSuccess(msg) {
+            const status = document.getElementById('status');
+            status.style.display = 'block';
+            status.style.background = '#2ecc71';
+            status.innerHTML = `SUKSES! NOMOR ANDA: ${msg}<br><small>Silakan ambil struk (jika printer terhubung)</small>`;
+            
+            // Suara konfirmasi sederhana
+            const msgVoice = new SpeechSynthesisUtterance(`Nomor antrian berhasil diambil. ${msg}`);
+            msgVoice.lang = 'id-ID';
+            window.speechSynthesis.speak(msgVoice);
+
+            setTimeout(() => { status.style.display = 'none'; }, 5000);
+        }
+
+        // Jalankan Playlist
+        loadGithubPlaylist();
+    </script>
 </body>
 </html>
