@@ -129,30 +129,50 @@
         });
     }
 
-    // 5. LOGIKA PANGGIL (SINKRON DENGAN TV)
+    // ... (Bagian atas kode tetap sama) ...
+
+    // 5. LOGIKA PANGGIL (SINKRON DENGAN TV & ANDROID)
     function panggil(key, nomor, kode) {
         const tipe = currentTab === 'sunat' ? 'SUNAT' : 'UMUM';
         
-        // Update data antrian utama (ini yang dibaca TV)
         const updates = {};
-        updates['antrian/is_calling'] = true;
+        // Trigger suara bel di TV
+        updates['antrian/is_calling'] = true; 
         updates['antrian/tipe_panggil'] = tipe;
         
+        // UPDATE PATH YANG BENAR (Sesuai MainActivity.kt)
         if (tipe === 'SUNAT') {
-            updates['antrian/Sunat'] = nomor;
+            updates['antrian/nomor_dipanggil/Sunat'] = nomor;
         } else {
-            updates['antrian/Umum'] = nomor;
-            updates['antrian/kode_umum'] = kode;
+            updates['antrian/nomor_dipanggil/Umum'] = nomor;
+            // Jika TV butuh info kode P/S dari remote:
+            updates['antrian/kode_umum'] = kode; 
         }
 
-        // Simpan log panggilan terbaru
-        updates['panggilan_terbaru'] = {
-            nomor: nomor,
-            tipe: currentTab === 'sunat' ? 'Sunat' : 'Umum',
-            kode: kode
-        };
+        // Jalankan Update ke Firebase
+        db.ref().update(updates).then(() => {
+            console.log("Berhasil memanggil nomor: " + nomor);
+        });
+    }
 
-        db.ref().update(updates);
+    // 6. LOGIKA SELESAI
+    function selesai(key) {
+        // Matikan suara TV dulu jika masih bunyi
+        stopCalling();
+        
+        // Ubah status di list agar hilang dari daftar tunggu
+        const path = currentTab === 'sunat' ? 'antrian_list/sunat' : 'antrian_list/umum';
+        db.ref(`${path}/${key}`).update({
+            status: 'selesai'
+        });
+    }
+
+    // 7. MATIKAN BELL (Sesuai trigger di index.html)
+    function stopCalling() {
+        db.ref('antrian/is_calling').set(false);
+    }
+
+// ... (Bagian bawah kode tetap sama) ...
     }
 
     // 6. LOGIKA SELESAI (HAPUS DARI LIST)
