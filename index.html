@@ -3,69 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <title>Display Antrian - Rumah Sunat Dokter Yanda</title>
+    
     <!-- Firebase SDK Legacy -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
+        /* UI ASLI - TIDAK BERUBAH */
         body { margin: 0; padding: 0; background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; width: 100vw; overflow: hidden; }
         
-        /* Sidebar Kiri */
         .sidebar-left { width: 30%; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 20px; background: #fff; border-right: 2px solid #ddd; }
+        
         .card { background: #fff; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #eee; border-top: 15px solid #f1c40f; }
         .card-umum { border-top: 15px solid #3498db; }
+        
         .card h2 { margin: 0; font-size: 2vw; color: #34495e; border-bottom: 5px solid #f1c40f; display: inline-block; text-transform: uppercase; }
         .card-umum h2 { border-bottom: 5px solid #3498db; }
+        
         .num { font-size: 8.5vw; font-weight: bold; margin: 5px 0; color: #2c3e50; }
+        
+        /* Efek Berkedip saat dipanggil */
         .blink { animation: blinker 1s linear infinite; transform: scale(1.1); color: #e74c3c !important; }
         @keyframes blinker { 50% { opacity: 0; } }
 
-        /* Tengah: Video */
+        /* Bingkai Video: Fit to Video */
         .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; border-left: 2px solid #ddd; border-right: 2px solid #ddd; }
-        video { width: 100%; height: 100%; object-fit: contain; }
+        video { width: 100%; height: 100%; object-fit: contain; background: black; }
 
         /* Sidebar Kanan: Poster & Jam */
         .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; }
-        
-        /* Container Poster - Pastikan Tinggi Ada */
         .poster-container { 
             width: 95%; 
-            height: 65vh; 
+            height: 70vh; 
             position: relative; 
             overflow: hidden; 
             border-radius: 15px; 
-            background: #eee; /* Warna background jika poster gagal muat */
+            background: #000; 
             box-shadow: 0 15px 35px rgba(0,0,0,0.2); 
         }
-        
         .poster-img { 
             width: 100%; 
             height: 100%; 
-            object-fit: cover; 
+            object-fit: contain; /* Agar poster tidak terpotong */
             position: absolute; 
             top: 0; 
             left: 0; 
-            display: none; /* Disembunyikan dulu, ditampilkan via JS */
+            display: none; 
+            transition: opacity 1.5s ease-in-out;
         }
-        
-        .poster-img.active { display: block; } /* Tampilkan hanya yang aktif */
+        .poster-img.active { display: block; opacity: 1; }
 
         #clock { font-size: 3.5vw; font-weight: bold; color: #2c3e50; margin-top: auto; }
         .footer-name { font-weight: bold; color: #16a085; font-size: 1.2vw; margin: 10px 0; }
 
+        /* Overlay Awal */
         #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; cursor: pointer; text-align: center; }
     </style>
 </head>
 
 <body onclick="startDisplay()">
 
+    <!-- Overlay Klik (Wajib) -->
     <div id="overlay">
         <h1>SISTEM ANTRIAN KLINIK</h1>
         <p>KLIK LAYAR UNTUK MEMULAI</p>
     </div>
 
+    <!-- Audio Bell -->
     <audio id="bellSound" src="audio/bell.mp3" preload="auto"></audio>
 
+    <!-- Kolom Kiri -->
     <div class="sidebar-left">
         <div class="card">
             <h2>ANTRIAN SUNAT</h2>
@@ -77,24 +84,26 @@
         </div>
     </div>
 
+    <!-- Kolom Tengah (Video) -->
     <div class="center-video">
         <video id="vPlayer" playsinline muted loop>
             <source src="videos/video1.mp4" type="video/mp4">
         </video>
     </div>
 
+    <!-- Kolom Kanan (Poster & Jam) -->
     <div class="sidebar-right">
         <div class="poster-container" id="posterList">
-            <!-- POSTER DITULIS MANUAL AGAR LEBIH PASTI TERBACA OLEH VERCEL -->
-            <img src="posters/poster1.jpg" class="poster-img active" onerror="this.src='https://via.placeholder.com/400x600?text=poster1.jpg+Tidak+Ada'">
-            <img src="posters/poster2.jpg" class="poster-img" onerror="this.src='https://via.placeholder.com/400x600?text=poster2.jpg+Tidak+Ada'">
+            <!-- Jalur folder menggunakan 'poster/' tanpa s -->
+            <img src="poster/poster1.jpg" class="poster-img active" onerror="this.src='https://via.placeholder.com/400x600?text=poster1.jpg+Tidak+Ada'">
+            <img src="poster/poster2.jpg" class="poster-img" onerror="this.src='https://via.placeholder.com/400x600?text=poster2.jpg+Tidak+Ada'">
         </div>
         <div id="clock">00:00:00</div>
         <p class="footer-name">Rumah Sunat Dokter Yanda</p>
     </div>
 
 <script>
-    // --- KONFIGURASI FIREBASE ---
+    // --- FIREBASE CONFIG ---
     const firebaseConfig = {
         apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
         databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app"
@@ -111,7 +120,6 @@
     let isStarted = false;
     let currentPosterIdx = 0;
 
-    // FUNGSI AKTIVASI
     function startDisplay() {
         if (isStarted) return;
         isStarted = true;
@@ -123,7 +131,6 @@
         startPosterLoop();
     }
 
-    // LOOPING POSTER
     function startPosterLoop() {
         const posters = document.querySelectorAll('.poster-img');
         if(posters.length <= 1) return;
@@ -132,7 +139,7 @@
             posters[currentPosterIdx].classList.remove('active');
             currentPosterIdx = (currentPosterIdx + 1) % posters.length;
             posters[currentPosterIdx].classList.add('active');
-        }, 8000); // Ganti tiap 8 detik
+        }, 8000); 
     }
 
     // Jam Digital
@@ -140,7 +147,7 @@
         document.getElementById("clock").innerText = new Date().toLocaleTimeString("id-ID");
     }, 1000);
 
-    // SINKRONISASI FIREBASE
+    // Sinkronisasi Firebase
     db.ref('antrian').on('value', (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
@@ -182,7 +189,7 @@
                 msg.rate = 0.8;
                 window.speechSynthesis.speak(msg);
             }, 2500); 
-        }).catch(e => console.log("Audio diblokir"));
+        }).catch(e => console.log("Audio diblokir browser"));
     }
 </script>
 </body>
