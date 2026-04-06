@@ -2,12 +2,14 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Display Antrian - Rumah Sunat Dokter Yanda</title>
+    <title>Display Antrian - Rumah Sunat Dokter Yanda</title>    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
         body { margin: 0; padding: 0; background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; width: 100vw; overflow: hidden; }
+        
+        /* Sidebar Kiri */
         .sidebar-left { width: 30%; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 20px; background: #fff; border-right: 2px solid #ddd; }
         .card { background: #fff; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #eee; border-top: 15px solid #f1c40f; }
         .card-umum { border-top: 15px solid #3498db; }
@@ -16,14 +18,19 @@
         .num { font-size: 8.5vw; font-weight: bold; margin: 5px 0; color: #2c3e50; }
         .blink { animation: blinker 1s linear infinite; transform: scale(1.1); color: #e74c3c !important; }
         @keyframes blinker { 50% { opacity: 0; } }
+
+        /* Tengah: Video Bingkai 9:16 */
         .center-video { width: 40%; background: #000; display: flex; justify-content: center; align-items: center; border-left: 2px solid #ddd; border-right: 2px solid #ddd; }
         video { width: 100%; height: 100%; object-fit: contain; background: black; }
+
+        /* Sidebar Kanan */
         .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; }
         .poster-container { width: 95%; height: 70vh; position: relative; overflow: hidden; border-radius: 15px; background: #000; box-shadow: 0 15px 35px rgba(0,0,0,0.2); }
         .poster-img { width: 100%; height: 100%; object-fit: contain; position: absolute; top: 0; left: 0; display: none; }
         .poster-img.active { display: block; }
         #clock { font-size: 3.5vw; font-weight: bold; color: #2c3e50; margin-top: auto; }
         .footer-name { font-weight: bold; color: #16a085; font-size: 1.2vw; margin: 10px 0; }
+        
         #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; cursor: pointer; text-align: center; }
     </style>
 </head>
@@ -81,32 +88,33 @@
     let currentVideoIdx = 0;
     let currentPosterIdx = 0;
 
-    // FUNGSI MEMBACA FOLDER VIDEO OTOMATIS DARI GITHUB PUBLIC
+    // FUNGSI AUTO SCAN VIDEO DARI GITHUB (Sudah perbaikan nama akun)
     async function fetchPlaylist() {
         try {
-            // URL LANGSUG KE REPO ANDA (Hardcoded agar tidak salah variabel)
-            const apiUrl = `https://api.github.com/repos/praktekdokteryanda-png/Antrian/contents/videos`;
+            // URL API GitHub dengan nama akun yang benar: praktekdoktereryanda-png
+            const apiUrl = `https://api.github.com/repos/praktekdoktereryanda-png/Antrian/contents/videos`;
             
             const response = await fetch(apiUrl);
             const files = await response.json();
 
             if (Array.isArray(files)) {
-                // Filter hanya file .mp4
+                // Ambil semua file .mp4
                 videoPlaylist = files
                     .filter(file => file.name.toLowerCase().endsWith('.mp4'))
                     .map(file => file.download_url);
 
-                console.log("Video ditemukan:", videoPlaylist);
+                console.log("Video ditemukan di folder:", videoPlaylist.length);
 
                 if (videoPlaylist.length > 0) {
                     playVideo(0);
                 }
             } else {
-                console.error("Gagal membaca folder GitHub:", files);
+                console.error("Gagal membaca folder GitHub. Pastikan Repo Public!", files);
+                videoPlaylist = ["videos/video1.mp4"]; // Fallback manual
+                playVideo(0);
             }
         } catch (error) {
             console.error("Error GitHub API:", error);
-            // Fallback jika API limit
             videoPlaylist = ["videos/video1.mp4"];
             playVideo(0);
         }
@@ -117,7 +125,7 @@
         currentVideoIdx = index;
         vPlayer.src = videoPlaylist[currentVideoIdx];
         vPlayer.load();
-        vPlayer.play().catch(e => console.log("Playback diblokir, butuh klik"));
+        vPlayer.play().catch(e => console.log("Menunggu Klik Pertama"));
 
         vPlayer.onended = () => {
             currentVideoIdx++;
@@ -130,7 +138,7 @@
         isStarted = true;
         document.getElementById('overlay').style.display = 'none';
         vPlayer.muted = false;
-        fetchPlaylist(); // Jalankan scan video
+        fetchPlaylist(); // Mulai scan otomatis saat klik layar
         startPosterLoop();
     }
 
