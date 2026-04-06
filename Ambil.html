@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kios Antrian - Rumah Sunat Dokter Yanda</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 500px; }
+        .btn-group { display: flex; flex-direction: column; gap: 20px; margin-top: 20px; }
+        .btn { padding: 25px; font-size: 1.5rem; font-weight: bold; border: none; border-radius: 15px; cursor: pointer; color: white; transition: 0.2s; }
+        .btn-sunat { background: #f1c40f; color: #2c3e50; }
+        .btn-umum { background: #3498db; }
+        .btn:active { transform: scale(0.95); }
+        
+        /* Modal Tiket */
+        #resultModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; z-index: 100; }
+        .modal-content { background: white; padding: 40px; border-radius: 20px; text-align: center; width: 80%; }
+        .ticket-num { font-size: 5rem; font-weight: bold; margin: 20px 0; color: #2c3e50; }
+        .btn-close { background: #e74c3c; color: white; padding: 10px 20px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>AMBIL ANTRIAN</h1>
+        <p>Rumah Sunat Dokter Yanda</p>
+        <div class="btn-group">
+            <button class="btn btn-sunat" onclick="ambilAntrian('Sunat', 'N')">ANTRIAN SUNAT</button>
+            <button class="btn btn-umum" onclick="ambilAntrian('Umum', 'S')">PRAKTEK UMUM</button>
+        </div>
+    </div>
+
+    <div id="resultModal">
+        <div class="modal-content">
+            <h2 id="modalTitle">NOMOR ANDA</h2>
+            <div class="ticket-num" id="modalNum">00</div>
+            <p id="modalDate"></p>
+            <button class="btn-close" onclick="closeModal()">TUTUP</button>
+        </div>
+    </div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
+        databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function ambilAntrian(tipe, kodeDefault) {
+        const today = new Date().toLocaleDateString('en-GB'); // Format: DD/MM/YYYY
+        const rootRef = db.ref('antrian');
+
+        // Gunakan Transaction pada root 'antrian' agar pengecekan tanggal & angka sinkron
+        rootRef.transaction((currentData) => {
+            if (currentData === null) return { Sunat: 1, Umum: 1, last_reset: today };
+
+            // FITUR RESET OTOMATIS: Jika tanggal di database berbeda dengan hari ini
+            if (currentData.last_reset !== today) {
+                currentData.Sunat = 0;
+                currentData.Umum = 0;
+                currentData.last_reset = today;
+                currentData.is_calling = false; // Reset status panggil juga
+            }
+
+            // Tambah nomor sesuai tombol yang diklik
+            currentData[tipe] = (currentData[tipe] || 0) + 1;
+            
+            return currentData;
+        }, (error, committed, snapshot) => {
+            if (committed) {
+                const data = snapshot.val();
+                const nomorBaru = data[tipe];
+                tampilkanTiket(tipe, kodeDefault, nomorBaru);
+            }
+        });
+    }
+
+    function tampilkanTiket(tipe, kode, nomor) {
+        const formattedNum = nomor.toString().padStart(2, '0');
+        let kodeFinal = kode;
+        
+        if (tipe === "Umum") {
+            const jam = new Date().getHours();
+            kodeFinal = jam < 12 ? "P" : "S";
+        }
+
+        document.getElementById('modalTitle').innerText = "ANTRIAN " + tipe.toUpperCase();
+        document.getElementById('modalNum').innerText = kodeFinal + "-" + formattedNum;
+        document.getElementById('modalDate').innerText = new Date().toLocaleString('id-ID');
+        document.getElementById('resultModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('resultModal').style.display = 'none';
+    }
+</script>
+</body>
+</html>
