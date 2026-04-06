@@ -2,31 +2,66 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Ambil Antrian - Klinik Dr. Yanda</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display Antrian - Rumah Sunat Dokter Yanda</title>
+    
+    <!-- Firebase SDK Legacy -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
     <style>
-        body { margin: 0; background: #2c3e50; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; color: white; }
-        .btn-container { text-align: center; width: 90%; max-width: 500px; background: rgba(255,255,255,0.1); padding: 40px; border-radius: 30px; }
-        .btn { width: 100%; padding: 30px; margin: 15px 0; font-size: 24px; font-weight: bold; border: none; border-radius: 15px; cursor: pointer; color: #fff; }
-        .btn-sunat { background: #f1c40f; color: #000; }
-        .btn-umum { background: #3498db; }
-        #ticket { display: none; background: white; color: black; padding: 20px; border-radius: 15px; margin-top: 20px; }
+        body { margin: 0; padding: 0; background: #f4f7f6; display: flex; height: 100vh; overflow: hidden; font-family: sans-serif; }
+        
+        /* Sidebar Kiri */
+        .sidebar-left { width: 30%; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 20px; background: #fff; border-right: 2px solid #ddd; }
+        .card { background: #fff; border-radius: 20px; padding: 30px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-top: 15px solid #f1c40f; }
+        .card-umum { border-top-color: #3498db; }
+        .num { font-size: 8vw; font-weight: bold; color: #2c3e50; margin: 10px 0; }
+        .blink { animation: blinker 1s linear infinite; color: #e74c3c !important; }
+        @keyframes blinker { 50% { opacity: 0; } }
+
+        /* TENGAH: Video Tanpa Bingkai Hitam */
+        .center-video { width: 40%; background: #000; display: flex; overflow: hidden; }
+        video { width: 100%; height: 100%; object-fit: cover; background: black; }
+
+        /* Sidebar Kanan */
+        .sidebar-right { width: 30%; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #fff; border-left: 2px solid #ddd; }
+        .poster-container { width: 100%; height: 70vh; position: relative; overflow: hidden; border-radius: 15px; background: #000; }
+        .poster-img { width: 100%; height: 100%; object-fit: cover; position: absolute; display: none; }
+        .poster-img.active { display: block; }
+        
+        #clock { font-size: 3.5vw; font-weight: bold; color: #2c3e50; margin-top: auto; }
+        #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); color: #fff; display: flex; align-items: center; justify-content: center; z-index: 100; cursor: pointer; }
     </style>
 </head>
-<body>
+<body onclick="startDisplay()">
 
-<div class="btn-container">
-    <h1>AMBIL ANTRIAN</h1>
-    <button class="btn btn-sunat" onclick="proses('Sunat')">SUNAT (KODE: N)</button>
-    <button class="btn btn-umum" onclick="proses('Umum')">UMUM (KODE: P/S)</button>
-    
-    <div id="ticket">
-        <h2>Nomor Anda:</h2>
-        <h1 id="num-display" style="font-size: 60px;">-</h1>
-        <p>Silakan tunggu panggilan di ruang tunggu</p>
+    <div id="overlay"><h1>KLIK UNTUK AKTIFKAN TV</h1></div>
+    <audio id="bell" src="audio/bell.mp3"></audio>
+
+    <div class="sidebar-left">
+        <div class="card">
+            <h2 style="color:#f39c12">SUNAT</h2>
+            <div class="num" id="sunatNum">N-00</div>
+        </div>
+        <div class="card card-umum">
+            <h2 style="color:#2980b9">UMUM</h2>
+            <div class="num" id="umumNum">P-00</div>
+        </div>
     </div>
-</div>
+
+    <div class="center-video">
+        <video id="vPlayer" muted loop></video>
+    </div>
+
+    <div class="sidebar-right">
+        <div class="poster-container" id="posterList">
+            <img src="poster/poster1.jpg" class="poster-img active">
+            <img src="poster/poster2.jpg" class="poster-img">
+        </div>
+        <div id="clock">00:00:00</div>
+        <p style="font-weight: bold; color: #7f8c8d;">Rumah Sunat Dokter Yanda</p>
+    </div>
 
 <script>
     const firebaseConfig = {
@@ -36,42 +71,78 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    async function proses(tipe) {
-        // Logika Reset Harian (Sama dengan MainActivity.kt)
-        const today = new Date().toISOString().split('T')[0];
-        const lastReset = await db.ref('metadata/last_reset_date').get();
-        if (lastReset.val() !== today) {
-            await db.ref().update({
-                "counter/N": 0, "counter/P": 0, "counter/S": 0,
-                "antrian/nomor_terakhir/Sunat": 0, "antrian/nomor_terakhir/Umum": 0,
-                "metadata/last_reset_date": today
-            });
-        }
+    const vPlayer = document.getElementById('vPlayer');
+    const bell = document.getElementById('bell');
+    const sunatNum = document.getElementById('sunatNum');
+    const umumNum = document.getElementById('umumNum');
+
+    let isStarted = false;
+
+    // SINKRONISASI DATA (Path disesuaikan dengan MainActivity.kt)
+    db.ref('antrian').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
 
         const jam = new Date().getHours();
-        const kode = (tipe === "Sunat") ? "N" : (jam < 12 ? "P" : "S");
+        const autoKode = jam < 12 ? "P" : "S";
+        
+        // Ambil nomor yang sedang dipanggil (nomor_dipanggil)
+        const sVal = (data.nomor_dipanggil?.Sunat || 0).toString().padStart(2, '0');
+        const uVal = (data.nomor_dipanggil?.Umum || 0).toString().padStart(2, '0');
 
-        // Transaction untuk nomor urut
-        db.ref('counter/' + kode).transaction((val) => (val || 0) + 1, (err, comm, snap) => {
-            if (comm) {
-                const num = snap.val();
-                // 1. Update nomor_terakhir (Hanya agar Admin tahu pendaftar baru)
-                db.ref(`antrian/nomor_terakhir/${tipe}`).setValue(num);
-                
-                // 2. Tambah ke list antrian
-                const listPath = (tipe === "Sunat") ? "antrian_list/sunat" : "antrian_list/umum";
-                db.ref(listPath).push({
-                    nomor: num,
-                    status: "menunggu",
-                    timestamp: firebase.database.ServerValue.TIMESTAMP
-                });
+        sunatNum.innerText = `N-${sVal}`;
+        umumNum.innerText = `${autoKode}-${uVal}`;
 
-                // Tampilkan di layar Kiosk
-                document.getElementById('num-display').innerText = `${kode}-${num.toString().padStart(2, '0')}`;
-                document.getElementById('ticket').style.display = 'block';
-                setTimeout(() => { document.getElementById('ticket').style.display = 'none'; }, 5000);
-            }
+        if (data.is_calling === true) {
+            vPlayer.pause();
+            const target = (data.tipe_panggil === "SUNAT") ? sunatNum : umumNum;
+            sunatNum.classList.remove('blink');
+            umumNum.classList.remove('blink');
+            target.classList.add('blink');
+            
+            panggilSuara(data.tipe_panggil, sVal, uVal, autoKode);
+        } else {
+            sunatNum.classList.remove('blink');
+            umumNum.classList.remove('blink');
+            if (isStarted) vPlayer.play().catch(() => {});
+        }
+    });
+
+    function panggilSuara(tipe, s, u, k) {
+        window.speechSynthesis.cancel();
+        bell.currentTime = 0;
+        bell.play().then(() => {
+            setTimeout(() => {
+                let teks = (tipe === "SUNAT") ? 
+                    `Nomor antrian, N, ${s}, Silahkan menuju ruang periksa sunat` :
+                    `Nomor antrian, ${k}, ${u}, Silahkan menuju ruang periksa umum`;
+                const msg = new SpeechSynthesisUtterance(teks);
+                msg.lang = 'id-ID';
+                window.speechSynthesis.speak(msg);
+            }, 2500);
         });
+    }
+
+    function startDisplay() {
+        if (isStarted) return;
+        isStarted = true;
+        document.getElementById('overlay').style.display = 'none';
+        vPlayer.muted = false;
+        vPlayer.play();
+        
+        // Loop Poster
+        const posters = document.querySelectorAll('.poster-img');
+        let idx = 0;
+        setInterval(() => {
+            posters[idx].classList.remove('active');
+            idx = (idx + 1) % posters.length;
+            posters[idx].classList.add('active');
+        }, 5000);
+
+        // Jam
+        setInterval(() => {
+            document.getElementById("clock").innerText = new Date().toLocaleTimeString("id-ID");
+        }, 1000);
     }
 </script>
 </body>
