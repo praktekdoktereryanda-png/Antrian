@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="id">
-<head><meta charset="UTF-8">
+<head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Remote Antrian Klinik</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,14 +12,13 @@
 </head>
 <body class="bg-slate-100 min-h-screen p-4 md:p-8">
     <div class="max-w-6xl mx-auto">
-        <!-- Header Panel -->
+        <!-- Header -->
         <div class="flex flex-col md:flex-row justify-between items-center mb-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <div>
                 <h1 class="text-3xl font-black text-slate-800 tracking-tight">REMOTE ADMIN</h1>
                 <p class="text-slate-500 font-medium">Panel Pemanggil Antrian Klinik</p>
             </div>
             
-            <!-- Tombol Stop Bell -->
             <div id="status-calling" class="hidden mt-4 md:mt-0">
                 <button onclick="stopCalling()" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all flex items-center gap-3">
                     <span class="relative flex h-3 w-3">
@@ -39,8 +39,8 @@
                         <span id="count-sunat" class="bg-white text-green-600 px-3 py-1 rounded-full text-sm font-black">0</span>
                     </h2>
                 </div>
-                <div id="list-sunat" class="space-y-3 min-h-[300px]">
-                    <div class="text-center py-10 text-slate-400 italic">Memuat data...</div>
+                <div id="list-sunat" class="space-y-3 min-h-[300px] bg-white/50 rounded-b-2xl p-2">
+                    <div class="text-center py-10 text-slate-400 italic">Memuat antrian...</div>
                 </div>
             </div>
 
@@ -52,14 +52,13 @@
                         <span id="count-umum" class="bg-white text-blue-600 px-3 py-1 rounded-full text-sm font-black">0</span>
                     </h2>
                 </div>
-                <div id="list-umum" class="space-y-3 min-h-[300px]">
-                    <div class="text-center py-10 text-slate-400 italic">Memuat data...</div>
+                <div id="list-umum" class="space-y-3 min-h-[300px] bg-white/50 rounded-b-2xl p-2">
+                    <div class="text-center py-10 text-slate-400 italic">Memuat antrian...</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, onValue, set, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -71,87 +70,97 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        let sunatData = [];
-        let umumData = [];
+        // State Global untuk menyimpan list antrian terbaru
+        let sunatList = [];
+        let umumList = [];
 
-        // Pantau status bell aktif
+        // 1. Sinkronisasi Status Panggilan (Bell)
         onValue(ref(db, "antrian/is_calling"), (snapshot) => {
             const isCalling = snapshot.val();
             document.getElementById("status-calling").classList.toggle("hidden", !isCalling);
         });
 
-        // Pantau Daftar Sunat
+        // 2. Sinkronisasi Antrian Sunat (N)
         onValue(ref(db, "antrian/antrian_list/sunat"), (snapshot) => {
             const data = snapshot.val();
             const list = [];
             if (data) {
                 Object.keys(data).forEach(key => {
-                    if (data[key].status === "menunggu") list.push({ key, ...data[key] });
+                    const item = data[key];
+                    if (item.status === "menunggu") {
+                        list.push({ key, ...item });
+                    }
                 });
             }
-            sunatData = list.sort((a, b) => a.timestamp - b.timestamp);
-            renderList("sunat", sunatData);
-            document.getElementById("count-sunat").innerText = sunatData.length;
+            // Urutkan berdasarkan waktu (timestamp)
+            sunatList = list.sort((a, b) => a.timestamp - b.timestamp);
+            renderQueue("sunat", sunatList);
+            document.getElementById("count-sunat").innerText = sunatList.length;
         });
 
-        // Pantau Daftar Umum
+        // 3. Sinkronisasi Antrian Umum (P/S)
         onValue(ref(db, "antrian/antrian_list/umum"), (snapshot) => {
             const data = snapshot.val();
             const list = [];
             if (data) {
                 Object.keys(data).forEach(key => {
-                    if (data[key].status === "menunggu") list.push({ key, ...data[key] });
+                    const item = data[key];
+                    if (item.status === "menunggu") {
+                        list.push({ key, ...item });
+                    }
                 });
             }
-            umumData = list.sort((a, b) => a.timestamp - b.timestamp);
-            renderList("umum", umumData);
-            document.getElementById("count-umum").innerText = umumData.length;
+            // Urutkan berdasarkan waktu (timestamp)
+            umumList = list.sort((a, b) => a.timestamp - b.timestamp);
+            renderQueue("umum", umumList);
+            document.getElementById("count-umum").innerText = umumList.length;
         });
 
-        function renderList(type, data) {
+        // Fungsi untuk menampilkan antrian ke layar
+        function renderQueue(type, list) {
             const container = document.getElementById(`list-${type}`);
-            if (data.length === 0) {
-                container.innerHTML = `<div class="bg-white p-8 rounded-xl text-center text-slate-400 border border-dashed border-slate-300">Antrian kosong</div>`;
+            if (list.length === 0) {
+                container.innerHTML = `<div class="bg-white p-8 rounded-xl text-center text-slate-400 border border-dashed border-slate-300">Tidak ada antrian</div>`;
                 return;
             }
 
-            container.innerHTML = data.map((item, index) => {
-                const nomorDisplay = type === "sunat" ? `N-${String(item.nomor).padStart(2, '0')}` : `${item.kode}-${String(item.nomor).padStart(2, '0')}`;
-                const textColor = type === "sunat" ? "text-green-700" : "text-blue-700";
-                const borderColor = type === "sunat" ? "border-green-200" : "border-blue-200";
+            container.innerHTML = list.map((item) => {
+                const formattedNo = type === "sunat" ? `N-${String(item.nomor).padStart(2, '0')}` : `${item.kode}-${String(item.nomor).padStart(2, '0')}`;
+                const colorClass = type === "sunat" ? "text-green-700" : "text-blue-700";
+                const borderClass = type === "sunat" ? "border-green-200" : "border-blue-200";
 
                 return `
-                    <div class="queue-card bg-white p-5 rounded-xl shadow-sm border ${borderColor} flex items-center justify-between transition-all">
+                    <div class="queue-card bg-white p-5 rounded-xl shadow-sm border ${borderClass} flex items-center justify-between">
                         <div>
                             <span class="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Nomor Antrian</span>
-                            <h3 class="text-4xl font-black ${textColor}">${nomorDisplay}</h3>
+                            <h3 class="text-4xl font-black ${colorClass}">${formattedNo}</h3>
                         </div>
                         <div class="flex items-center gap-3">
-                            <button onclick="panggil('${type}', '${item.key}', ${item.nomor}, '${item.kode}')" 
+                            <button onclick="panggil('${type}', ${item.nomor}, '${item.kode}')" 
                                 class="bg-slate-800 hover:bg-black text-white p-4 rounded-2xl shadow-lg transition-all group">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                                 </svg>
                             </button>
                             <button onclick="selesai('${type}', '${item.key}')" 
-                                class="bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-700 font-black py-4 px-6 rounded-2xl transition-all border border-slate-200">
+                                class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-black py-4 px-6 rounded-2xl transition-all border border-slate-200">
                                 SELESAI
                             </button>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             }).join("");
         }
 
-        // FUNGSI PANGGIL KE TV
-        window.panggil = (type, key, nomor, kode) => {
-            const tipePanggil = type.toUpperCase();
+        // FUNGSI PANGGIL (Sama dengan Android Panggil)
+        window.panggil = (type, nomor, kode) => {
+            const tipeLabel = type.toUpperCase(); // SUNAT atau UMUM
             const updates = {};
             updates["antrian/is_calling"] = true;
-            updates["antrian/tipe_panggil"] = tipePanggil;
+            updates["antrian/tipe_panggil"] = tipeLabel;
+            
             updates["panggilan_terbaru"] = {
                 nomor: nomor,
-                tipe: tipePanggil,
+                tipe: tipeLabel,
                 kode: kode,
                 timestamp: serverTimestamp()
             };
@@ -162,34 +171,49 @@
                 updates["antrian/nomor_dipanggil/Umum"] = nomor;
                 updates["antrian/nomor_dipanggil/kode_umum"] = kode;
             }
+
             update(ref(db), updates);
         };
 
-        // FUNGSI SELESAI & PANGGIL BERIKUTNYA
+        // FUNGSI SELESAI (Sama dengan Android Selesai)
         window.selesai = async (type, key) => {
-            // 1. Set status selesai
-            await set(ref(db, `antrian/antrian_list/${type}/${key}/status`), "selesai");
+            // 1. Tentukan path data
+            const path = type === "sunat" ? `antrian/antrian_list/sunat/${key}` : `antrian/antrian_list/umum/${key}`;
+            
+            // 2. Ambil list saat ini untuk mencari "nomor berikutnya"
+            const currentList = type === "sunat" ? sunatList : umumList;
+            
+            // Logika Android: Ambil item ke-2 (index 1) karena item ke-1 (index 0) sedang diselesaikan
+            const nextItem = currentList[1];
 
-            // 2. Cari siapa nomor berikutnya
-            const currentList = type === "sunat" ? sunatData : umumData;
-            // Ambil index ke-1 karena index ke-0 baru saja diselesaikan
-            const nextItem = currentList[1]; 
+            // 3. Set status SELESAI di Firebase
+            await update(ref(db, path), { status: "selesai" });
 
+            // 4. Jika ada nomor berikutnya, panggil secara otomatis
             if (nextItem) {
-                // 3. Otomatis panggil nomor selanjutnya di TV
-                panggil(type, nextItem.key, nextItem.nomor, nextItem.kode);
+                // Jeda sedikit agar sinkronisasi list di firebase selesai dulu
+                setTimeout(() => {
+                    panggil(type, nextItem.nomor, nextItem.kode);
+                }, 500);
             } else {
-                // Jika sudah habis, matikan status calling
-                const updates = {};
-                updates["antrian/is_calling"] = false;
-                if (type === "sunat") updates["antrian/nomor_dipanggil/Sunat"] = 0;
-                else updates["antrian/nomor_dipanggil/Umum"] = 0;
-                update(ref(db), updates);
+                // Jika tidak ada antrian lagi, matikan panggil
+                const finalUpdates = {};
+                finalUpdates["antrian/is_calling"] = false;
+                if (type === "sunat") {
+                    finalUpdates["antrian/nomor_dipanggil/Sunat"] = 0;
+                } else {
+                    finalUpdates["antrian/nomor_dipanggil/Umum"] = 0;
+                }
+                update(ref(db), finalUpdates);
             }
         };
 
+        // MATIKAN BELL
         window.stopCalling = () => {
-            update(ref(db), { "antrian/is_calling": false, "antrian/tipe_panggil": "" });
+            update(ref(db), { 
+                "antrian/is_calling": false, 
+                "antrian/tipe_panggil": "" 
+            });
         };
     </script>
 </body>
