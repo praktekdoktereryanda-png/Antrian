@@ -1,59 +1,197 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-    <title>Display Antrian TV</title>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <meta charset="UTF-8">    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiosk Antrian Klinik</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        body { background: #2c3e50; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .row { display: flex; gap: 50px; }
-        .box { background: white; color: #2c3e50; padding: 40px; border-radius: 30px; min-width: 350px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); }
-        .nomor { font-size: 150px; font-weight: 900; margin: 0; color: #2980b9; }
-        h2 { font-size: 40px; margin-bottom: 10px; }
+        @media print {
+            body * { visibility: hidden; }
+            #receipt-print, #receipt-print * { visibility: visible; }
+            #receipt-print {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 80mm; /* Standar Printer Thermal */
+                padding: 5mm;
+                font-family: 'Courier New', Courier, monospace;
+                color: black;
+            }
+            @page { margin: 0; size: 80mm auto; }
+        }
+        .receipt-font { font-family: 'Courier New', Courier, monospace; }
+        #receipt-print { width: 80mm; margin: 0 auto; }
     </style>
 </head>
-<body>
-    <h1 style="font-size: 50px; margin-bottom: 50px;">ANTRIAN KLINIK</h1>
-    <div class="row">
-        <div class="box">
-            <h2>SUNAT</h2>
-            <p class="nomor" id="s-no">N-00</p>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- UI KIOSK -->
+    <div class="max-w-4xl w-full text-center space-y-8 bg-white p-12 rounded-3xl shadow-xl border border-slate-200">
+        <div>
+            <h1 class="text-6xl font-black text-slate-800 mb-2 italic">SELAMAT DATANG</h1>
+            <p class="text-2xl text-slate-500 font-medium">Silakan pilih layanan untuk mengambil nomor antrian</p>
         </div>
-        <div class="box">
-            <h2>UMUM</h2>
-            <p class="nomor" id="u-no">P-00</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+            <!-- Tombol Sunat -->
+            <button onclick="ambilAntrian('SUNAT')" class="group relative bg-emerald-600 hover:bg-emerald-700 text-white rounded-3xl p-10 shadow-2xl transition-all active:scale-95 overflow-hidden">
+                <span class="block text-7xl font-black mb-2 text-shadow">SUNAT</span>
+                <span class="text-2xl font-bold opacity-80 uppercase tracking-widest">KODE: N</span>
+                <div class="mt-4 text-sm bg-emerald-800/30 rounded-lg py-2">Pagi (05.00) | Siang (12.00)</div>
+            </button>
+
+            <!-- Tombol Umum -->
+            <button onclick="ambilAntrian('UMUM')" class="group relative bg-blue-600 hover:bg-blue-700 text-white rounded-3xl p-10 shadow-2xl transition-all active:scale-95 overflow-hidden">
+                <span class="block text-7xl font-black mb-2 text-shadow text-white">UMUM</span>
+                <span class="text-2xl font-bold opacity-80 uppercase tracking-widest">KODE: P/S</span>
+                <div class="mt-4 text-sm bg-blue-800/30 rounded-lg py-2">Pagi (06.00) | Sore (16.00)</div>
+            </button>
+        </div>
+        
+        <p class="text-slate-400 font-medium text-xl italic">Estimasi cerdas berdasarkan progres antrian aktif</p>
+    </div>
+
+    <!-- TEMPLATE STRUK (Tersembunyi di Layar) -->
+    <div id="receipt-print" class="hidden text-center receipt-font text-black">
+        <div id="receipt-content">
+            <br>
+            <h2 id="r-header" class="font-bold text-2xl leading-tight"></h2>
+            <p id="r-subheader" class="text-sm leading-tight mb-2 whitespace-pre-line"></p>
+            <p class="text-sm">------------------------------------------</p>
+            <p class="text-lg font-bold">NOMOR ANTRIAN</p>
+            <h1 id="r-nomor" class="text-7xl font-black my-6"></h1>
+            <p class="text-sm">------------------------------------------</p>
+            <div class="text-left text-sm px-4 space-y-1">
+                <p id="r-waktu"></p>
+                <p id="r-estimasi" class="text-2xl font-black border-2 border-black p-2 text-center mt-2"></p>
+                <p class="text-[10px] italic text-center text-slate-600 mt-2">*Harap hadir 15 menit sebelum estimasi</p>
+            </div>
+            <p class="text-sm mt-2">------------------------------------------</p>
+            <div id="r-qrcode" class="flex justify-center mb-4"></div>
+            <p class="text-sm font-bold">Terima Kasih</p>
+            <p class="text-sm">Mohon menunggu antrian</p>
+            <br><br><br>
         </div>
     </div>
 
-    <script>
-        const firebaseConfig = { /* SAMA DENGAN DI ATAS */
-            apiKey: "AIzaSyCw7vZ2LNJwZjMwBb5KC-TSc67LPl4W4f8",
-            authDomain: "antrian-klinik-cf6cb.firebaseapp.com",
-            databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "antrian-klinik-cf6cb",
-            storageBucket: "antrian-klinik-cf6cb.firebasestorage.app",
-            messagingSenderId: "737102197117",
-            appId: "1:737102197117:web:cc4752ea0c879741e35c14"
+    <!-- FIREBASE SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, runTransaction, push, set, get, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            databaseURL: "https://antrian-klinik-cf6cb-default-rtdb.asia-southeast1.firebasedatabase.app"
         };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
 
-        db.ref('antrian/nomor_dipanggil').on('value', snap => {
-            const d = snap.val();
-            if(d) {
-                document.getElementById('s-no').innerText = "N-" + String(d.Sunat || 0).padStart(2, '0');
-                document.getElementById('u-no').innerText = (d.kode_umum || "P") + "-" + String(d.Umum || 0).padStart(2, '0');
-            }
-        });
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
 
-        db.ref('panggilan_terbaru').on('value', snap => {
-            const v = snap.val();
-            if(v && v.nomor > 0) {
-                const msg = new SpeechSynthesisUtterance(`Nomor antrian ${v.kode} ${v.nomor}, silahkan menuju ruang ${v.tipe}`);
-                msg.lang = 'id-ID';
-                window.speechSynthesis.speak(msg);
+        window.ambilAntrian = async (layanan) => {
+            const now = new Date();
+            const counterRef = ref(db, `counter/global_val`);
+
+            try {
+                // Gunakan counter global agar urutan nomor tetap sinkron 1, 2, 3...
+                const result = await runTransaction(counterRef, (current) => (current || 0) + 1);
+
+                if (result.committed) {
+                    const nextNum = result.snapshot.val();
+                    const jam = now.getHours();
+                    let kode = (layanan === "SUNAT") ? "N" : (jam < 12 ? "P" : "S");
+                    
+                    const formattedNo = `${kode}-${String(nextNum).padStart(2, '0')}`;
+                    const path = layanan === "SUNAT" ? "antrian/antrian_list/sunat" : "antrian/antrian_list/umum";
+
+                    // Simpan data ke Firebase
+                    await set(push(ref(db, path)), {
+                        nomor: nextNum,
+                        kode: kode,
+                        status: "menunggu",
+                        timestamp: serverTimestamp()
+                    });
+
+                    // Panggil fungsi estimasi real-time
+                    hitungDanCetak(formattedNo, layanan, nextNum);
+                }
+            } catch (error) {
+                alert("Gagal mengambil antrian: " + error.message);
             }
-        });
+        };
+
+        async function hitungDanCetak(nomor, layanan, globalIndex) {
+            const now = new Date();
+            
+            // 1. Ambil nomor yang SEDANG DIPANGGIL di TV saat ini
+            const snapshotSunat = await get(ref(db, "antrian/nomor_dipanggil/Sunat"));
+            const snapshotUmum = await get(ref(db, "antrian/nomor_dipanggil/Umum"));
+            const nomorSekarang = Math.max(snapshotSunat.val() || 0, snapshotUmum.val() || 0);
+            
+            let estimasiTime = new Date();
+            const durasi = 15; // Estimasi 15 menit per orang (Realistis)
+            const kapasitasPagi = 14;
+
+            // 2. Tentukan Jam Buka Sesi Sesuai Aturan User
+            let jamBuka = 0;
+            if (layanan === "SUNAT") {
+                jamBuka = (globalIndex <= kapasitasPagi) ? 5 : 12; // Pagi 05.00, Siang 12.00
+            } else {
+                jamBuka = (globalIndex <= kapasitasPagi) ? 6 : 16; // Pagi 06.00, Sore 16.00
+            }
+
+            let sessionStartTime = new Date();
+            sessionStartTime.setHours(jamBuka, 0, 0, 0);
+
+            // 3. Titik Awal Perhitungan (Dinamis)
+            let startingPoint = new Date();
+            if (now < sessionStartTime) {
+                startingPoint = sessionStartTime; // Belum buka, hitung dari jam buka
+            } else {
+                startingPoint = now; // Sudah buka, hitung dari sekarang
+            }
+
+            // 4. Hitung Sisa Antrian di depan pasien ini
+            let sisaOrang = 0;
+            if (nomorSekarang < globalIndex) {
+                const nomorMulaiSesi = (globalIndex <= kapasitasPagi) ? 1 : (kapasitasPagi + 1);
+                const referensiNomor = Math.max(nomorSekarang, nomorMulaiSesi - 1);
+                sisaOrang = globalIndex - referensiNomor - 1;
+            }
+
+            // Estimasi = Titik Awal + (Jumlah Orang di Depan x 15 Menit)
+            estimasiTime = new Date(startingPoint.getTime() + (sisaOrang * durasi * 60000));
+
+            // 5. Minimal Jeda 10 Menit agar tidak buru-buru
+            const minBuffer = new Date(now.getTime() + 10 * 60000);
+            if (estimasiTime < minBuffer && now >= sessionStartTime) {
+                estimasiTime = minBuffer;
+            }
+
+            // --- TAMPILAN STRUK ---
+            if (layanan === "SUNAT") {
+                document.getElementById('r-header').innerText = "NYUNATIN";
+                document.getElementById('r-subheader').innerText = "Rumah Sunat Dokter Yanda\n085277562682";
+            } else {
+                document.getElementById('r-header').innerText = "PRAKTEK DOKTER";
+                document.getElementById('r-subheader').innerText = "dr. Eryanda & dr. Arianti Arista\nsolusi kesehatan anda";
+            }
+
+            document.getElementById('r-nomor').innerText = nomor;
+            document.getElementById('r-waktu').innerText = `Cetak: ${now.toLocaleDateString('id-ID')} ${now.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}`;
+            
+            const estStr = estimasiTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('r-estimasi').innerText = `JAM LAYAN: ${estStr}`;
+
+            // Generate QR Code untuk Ulasan
+            document.getElementById("r-qrcode").innerHTML = "";
+            new QRCode(document.getElementById("r-qrcode"), {
+                text: "https://search.google.com/local/writereview?placeid=ChIJdf95uCVLaS4Rsu--aObWDsU",
+                width: 90, height: 90
+            });
+
+            // Jalankan Perintah Print
+            setTimeout(() => { window.print(); }, 500);
+        }
     </script>
 </body>
 </html>
